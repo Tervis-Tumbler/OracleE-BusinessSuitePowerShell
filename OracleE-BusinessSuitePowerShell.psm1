@@ -1,25 +1,78 @@
-﻿function Get-EBSConnectionString {
-    if ($Script:EBSConnectionString) {
-        $Script:EBSConnectionString
-    } else {
-        throw "Set-EBSConnectionString must be called at least once before running Get-EBSConnectionString. Use ConvertTo-OracleConnectionString to generate a valid connection string."
+﻿function New-EBSPowershellConfiguration {
+    param (
+        [Parameter(Mandatory,ParameterSetName="DatabaseConnectionString")][String]$DatabaseConnectionString,
+        [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$Host,
+        [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$Port,
+        [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$Service_Name,
+        [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$UserName,
+        [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$Password,
+        [Parameter(ParameterSetName="NoDatabaseConnectionString")][string]$Protocol = "TCP",
+
+        $RootCredential,
+        $ApplmgrCredential,
+        $AppsCredential,
+        $InternetApplicationServerComputerName
+    )
+    $Parameters = $PSBoundParameters
+
+    if (-not $DatabaseConnectionString) {
+        $DatabaseConnectionString = $Parameters |
+        ConvertFrom-PSBoundParameters -Property Host,Port,Service_Name,UserName,Password,Protocol |
+        ConvertTo-OracleConnectionString
+    }
+
+    $Parameters | 
+    ConvertFrom-PSBoundParameters -ExcludeProperty Host,Port,Service_Name,UserName,Password,Protocol,DatabaseConnectionString -Property *,@{
+        Name = "DatabaseConnectionString"
+        Expression = {$DatabaseConnectionString}
     }
 }
 
-function Set-EBSConnectionString {
+function Get-EBSPowershellConfiguration {
+    $Script:Configuration
+}
+
+function Set-EBSPowershellConfiguration {
     param (
-        [Parameter(Mandatory)][String]$ConnectionString
+        [PSObject]$Configuration
     )
-    $Script:EBSConnectionString = $ConnectionString
+    $Script:Configuration = $Configuration
+}
+
+function Invoke-EBSIASSSHCommand {
+    param (
+        $Command
+    )
+    if (-not $Script:SSHSession) {
+        $Script:SSHSession = New-SSHSession -ComputerName $Script:Configuration.InternetApplicationServerComputerName -Credential $Script:Configuration.ApplmgrCredential
+    }
+    Invoke-SSHCommand -SSHSession $Script:SSHSession -Command $Command |
+    Select-Object -ExpandProperty Output
+}
+
+function Get-EBSFNDLoad {
+    param (
+        [Parameter(Mandatory)]$ResponsibilityName
+    )
+    $Responsibility = Get-EBSResponsibility -RESPONSIBILITY_NAME $ResponsibilityName
+    
+    if (-not $Responsibility) { Throw "No responsiblity found with the name $ResponsibilityName" }
+@"
+. /u01/app/applmgr/DEV/apps_st/appl/APPSDEV_dlt-ias01.env;
+cd /tmp
+FNDLOAD $($Script:Configuration.AppsCredential.username)/$($Script:Configuration.AppsCredential.getNetworkCredential().password) 0 Y DOWNLOAD `$FND_TOP/patch/115/import/afscursp.lct TempExport.ldt FND_RESPONSIBILITY RESP_KEY=”$($Responsibility.RESPONSIBILITY_KEY)”
+"@
+#    Invoke-EBSIASSSHCommand -command @"
+#
+#"@
+Get-SFTPSession
 }
 
 function Invoke-EBSSQL {
     param (
         [Parameter(Mandatory)][String]$SQLCommand
     )
-    $EBSConnectionString = Get-EBSConnectionString
-
-    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow
+    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $Script:Configuration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow
 }
 
 function Get-EBSUserNameAndResponsibility {
