@@ -28,15 +28,6 @@
     }
 }
 
-function Get-EBSIASNode {
-    [PSCustomObject]@{
-        ComputerName = $Script:Configuration.InternetApplicationServerComputerName
-        Credential = $Script:Configuration.ApplmgrCredential
-    } | 
-    Add-SSHSessionCustomProperty -PassThru -UseIPAddress:$false | 
-    Add-SFTPSessionCustomProperty -PassThru -UseIPAddress:$false
-}
-
 function Get-EBSPowershellConfiguration {
     $Script:Configuration
 }
@@ -48,9 +39,22 @@ function Set-EBSPowershellConfiguration {
     $Script:Configuration = $Configuration
 }
 
+function Get-EBSIASNode {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    [PSCustomObject]@{
+        ComputerName = $EBSEnvironmentConfiguration.InternetApplicationServerComputerName
+        Credential = $EBSEnvironmentConfiguration.ApplmgrCredential
+    } | 
+    Add-SSHSessionCustomProperty -PassThru -UseIPAddress:$false | 
+    Add-SFTPSessionCustomProperty -PassThru -UseIPAddress:$false
+}
+
 function Invoke-EBSIASSSHCommand {
     param (
-        $Command
+        [Parameter(Mandatory)]$Command,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     $EBSIASNode = Get-EBSIASNode
     Invoke-SSHCommand -SSHSession $EBSIASNode.SSHSession -Command $Command |
@@ -59,31 +63,49 @@ function Invoke-EBSIASSSHCommand {
 
 function Get-EBSFNDLoad {
     param (
-        [Parameter(Mandatory)]$ResponsibilityName
+        [Parameter(Mandatory)]$ResponsibilityName,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
-    $Responsibility = Get-EBSResponsibility -RESPONSIBILITY_NAME $ResponsibilityName
+    $Responsibility = Get-EBSResponsibility -RESPONSIBILITY_NAME $ResponsibilityName -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration
     
     if (-not $Responsibility) { Throw "No responsiblity found with the name $ResponsibilityName" }
-@"
+    
+    $FNDLoadCredentialParameter = $($EBSEnvironmentConfiguration.AppsCredential.username)/$($EBSEnvironmentConfiguration.AppsCredential.getNetworkCredential().password)
+
+    $Command = @"
 . /u01/app/applmgr/DEV/apps_st/appl/APPSDEV_dlt-ias01.env
 cd /tmp
-FNDLOAD $($Script:Configuration.AppsCredential.username)/$($Script:Configuration.AppsCredential.getNetworkCredential().password) 0 Y DOWNLOAD `$FND_TOP/patch/115/import/afscursp.lct TempExport.ldt FND_RESPONSIBILITY RESP_KEY=”$($Responsibility.RESPONSIBILITY_KEY)”
+FNDLOAD $FNDLoadCredentialParameter 0 Y DOWNLOAD `$FND_TOP/patch/115/import/afscursp.lct TempExport.ldt FND_RESPONSIBILITY RESP_KEY="$($Responsibility.RESPONSIBILITY_KEY)"
 "@
-#    Invoke-EBSIASSSHCommand -command @"
-#
-#"@
-Get-SFTPSession
+    $EBSIASNode = Get-EBSIASNode -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration
+    Invoke-SSHCommand -SSHSession $EBSIASNode.SSHSession -Command $Command |
+    Select-Object -ExpandProperty Output
+
+    $ResponsibilityDefinition = Get-SFTPContent -SFTPSession $EBSIASNode.SFTPSession -Path "/tmp/TempExport.ldt"
+    Get-SFTPFile -SFTPSession $EBSIASNode.SFTPSession -RemoteFile "/tmp/TempExport.ldt" -LocalPath "$env:TEMP"
+
+    Set-SFTPFile -SFTPSession $EBSIASNode.SFTPSession -LocalFile "$env:TEMP\TempExport.ldt" -RemotePath "/tmp"
+
+    $Command = @"
+. /u01/app/applmgr/DEV/apps_st/appl/APPSDEV_dlt-ias01.env
+cd /tmp
+FNDLOAD $FNDLoadCredentialParameter 0 Y UPLOAD `$FND_TOP/patch/115/import/afscursp.lct TempExport.ldt"
+"@
 }
 
 function Invoke-EBSSQL {
     param (
-        [Parameter(Mandatory)][String]$SQLCommand
+        [Parameter(Mandatory)][String]$SQLCommand,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
-    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $Script:Configuration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow
+    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow
 }
 
 function Get-EBSUserNameAndResponsibility {
-    Invoke-EBSSQL -SQLCommand @"
+    param (
+        [Parameter(Mandatory)]$EBSEnvironmentConfiguration
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select distinct usr.user_name
   ,usr.description
   ,resp.responsibility_name
@@ -103,9 +125,10 @@ function Get-EBSPerson {
         [String]$FIRST_NAME,
         [String]$LAST_NAME,
         [String]$EMPLOYEE_NUMBER,
-        [ValidateSet("Y","N")]$CURRENT_EMPLOYEE_FLAG
+        [ValidateSet("Y","N")]$CURRENT_EMPLOYEE_FLAG,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
-     Invoke-EBSSQL -SQLCommand @"
+     Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select * 
 from apps.per_all_people_f
 where 1 = 1
@@ -118,10 +141,11 @@ $(if ($CURRENT_EMPLOYEE_FLAG) {"AND apps.per_all_people_f.CURRENT_EMPLOYEE_FLAG 
 
 function Get-EBSUser {
     param (
-        $USER_NAME
+        $USER_NAME,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     $TableName = "APPS.FND_USER"
-    Invoke-EBSSQL -SQLCommand @"
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select * 
 from $TableName
 where 1 = 1
@@ -131,10 +155,11 @@ $(if ($USER_NAME) {"AND $TableName.USER_NAME = '$($USER_NAME.ToUpper())'"})
 
 function Get-EBSResponsibility {
     param (
-        [String]$RESPONSIBILITY_NAME
+        [String]$RESPONSIBILITY_NAME,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     $TableName = "APPS.FND_USER"
-    Invoke-EBSSQL -SQLCommand @"
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select *
 from 
 APPS.FND_RESPONSIBILITY_TL FRT, 
@@ -142,6 +167,21 @@ APPS.FND_RESPONSIBILITY FR
 where 1 = 1
 AND FRT.RESPONSIBILITY_ID = FR.RESPONSIBILITY_ID
 $(if ($RESPONSIBILITY_NAME) {"AND FRT.RESPONSIBILITY_NAME = '$($RESPONSIBILITY_NAME)'"})
+"@
+}
+
+function Get-EBSProfileOptionWithValuesCount {
+    param (
+        [String]$RESPONSIBILITY_NAME,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    $TableName = "APPS.FND_USER"
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select count (*) from (
+  select count(*)
+  from  apps.FND_PROFILE_OPTION_VALUES
+  group by Application_ID, Profile_Option_ID
+);
 "@
 }
 
