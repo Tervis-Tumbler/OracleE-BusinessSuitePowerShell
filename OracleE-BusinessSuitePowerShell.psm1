@@ -28,6 +28,15 @@
     }
 }
 
+function Get-EBSIASNode {
+    [PSCustomObject]@{
+        ComputerName = $Script:Configuration.InternetApplicationServerComputerName
+        Credential = $Script:Configuration.ApplmgrCredential
+    } | 
+    Add-SSHSessionCustomProperty -PassThru -UseIPAddress:$false | 
+    Add-SFTPSessionCustomProperty -PassThru -UseIPAddress:$false
+}
+
 function Get-EBSPowershellConfiguration {
     $Script:Configuration
 }
@@ -43,10 +52,8 @@ function Invoke-EBSIASSSHCommand {
     param (
         $Command
     )
-    if (-not $Script:SSHSession) {
-        $Script:SSHSession = New-SSHSession -ComputerName $Script:Configuration.InternetApplicationServerComputerName -Credential $Script:Configuration.ApplmgrCredential
-    }
-    Invoke-SSHCommand -SSHSession $Script:SSHSession -Command $Command |
+    $EBSIASNode = Get-EBSIASNode
+    Invoke-SSHCommand -SSHSession $EBSIASNode.SSHSession -Command $Command |
     Select-Object -ExpandProperty Output
 }
 
@@ -58,7 +65,7 @@ function Get-EBSFNDLoad {
     
     if (-not $Responsibility) { Throw "No responsiblity found with the name $ResponsibilityName" }
 @"
-. /u01/app/applmgr/DEV/apps_st/appl/APPSDEV_dlt-ias01.env;
+. /u01/app/applmgr/DEV/apps_st/appl/APPSDEV_dlt-ias01.env
 cd /tmp
 FNDLOAD $($Script:Configuration.AppsCredential.username)/$($Script:Configuration.AppsCredential.getNetworkCredential().password) 0 Y DOWNLOAD `$FND_TOP/patch/115/import/afscursp.lct TempExport.ldt FND_RESPONSIBILITY RESP_KEY=”$($Responsibility.RESPONSIBILITY_KEY)”
 "@
