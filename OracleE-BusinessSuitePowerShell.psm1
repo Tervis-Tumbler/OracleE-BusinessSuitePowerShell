@@ -197,3 +197,152 @@ function New-EBSSQLWhere {
     }
 
 }
+function Get-EBSTradingCommunityArchitectureParty {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_parties
+where 1 = 1
+$(if ($Party_ID) {"AND hz_parties.Party_ID = '$($Party_ID)'"})
+"@
+}
+
+function Get-EBSTradingCommunityArchitectureCustomerAccount {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(Mandatory,ParameterSetName="Cust_Account_ID")]$Cust_Account_ID,
+        [Parameter(Mandatory,ParameterSetName="Account_Number")]$Account_Number,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_cust_accounts
+where 1 = 1
+$(if ($Account_Number) {"AND hz_cust_accounts.Account_Number = '$($Account_Number)'"})
+$(if ($Cust_Account_ID) {"AND hz_cust_accounts.Cust_Account_ID = '$($Cust_Account_ID)'"})
+$(if ($Party_ID) {"AND hz_cust_accounts.Party_ID = '$($Party_ID)'"})
+"@
+}
+
+function Get-EBSTradingCommunityArchitectureRelationship {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(ValueFromPipelineByPropertyName)]$Party_ID,
+        $object_id
+    )
+    process {
+        $object_id = $Party_ID
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_relationships
+where 1 = 1
+$(if ($object_id) {"AND hz_relationships.object_id = '$($object_id)'"})
+"@
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureContactPoint {
+    [Cmdletbinding(DefaultParameterSetName="EmailAddress")]
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(Mandatory,ParameterSetName="EmailAddress")]$EmailAddress,
+        
+        [ValidatePattern("\d{3}")][
+        Parameter(Mandatory,ParameterSetName="PhoneNumber")]
+        $PhoneNumberAreaCode,
+        
+        [ValidatePattern("\d{3}-\d{4}")]
+        [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
+        $PhoneNumberWithoutAreaCodeWithDash
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_contact_points
+where 1 = 1
+$(if ($EmailAddress) {"AND UPPER(hz_contact_points.email_address) = UPPER('$($EmailAddress)')"})
+$(if ($PhoneNumberAreaCode) {"AND hz_contact_points.phone_area_code = '$($PhoneNumberAreaCode)'"})
+$(if ($PhoneNumberWithoutAreaCodeWithDash) {"AND hz_contact_points.phone_number = '$($PhoneNumberWithoutAreaCodeWithDash)'"})
+"@
+}
+
+function Get-EBSTradingCommunityArchitectureCustomerAccountSite {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_cust_acct_sites_all
+where rownum <= 10
+"@
+}
+
+function Get-EBSTradingCommunityArchitectureCustomerSiteUse {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+select *
+from 
+hz_cust_site_uses_all
+where rownum <= 10
+"@
+}
+
+function Get-EBSRelationshipFromEmail {
+    param (
+        [Parameter(Mandatory)]$EmailAddress
+    )
+
+    Get-EBSTradingCommunityArchitectureContactPoint -EmailAddress $EmailAddress |
+    ForEach-Object -Process {
+        [PSCustomObject]@{
+            Party_ID = $_.OWNER_TABLE_ID
+        }
+    } |
+    Get-EBSTradingCommunityArchitectureRelationship
+}
+
+function Get-EBSContactFromEmail {
+    param (
+        [Parameter(Mandatory)]$EmailAddress
+    )
+    Get-EBSRelationshipFromEmail -EmailAddress $EmailAddress | 
+    where RELATIONSHIP_TYPE -EQ "Contact" |
+    ForEach-Object -Process {
+        [PSCustomObject]@{
+            Party_ID = $_.subject_id
+        }
+    } |
+    Get-EBSTradingCommunityArchitectureParty
+}
+
+function Get-EBSCustomerAccountFromEmail {
+    param (
+        [Parameter(Mandatory)]$EmailAddress
+    )
+
+    Get-EBSRelationshipFromEmail -EmailAddress $EmailAddress | 
+    where RELATIONSHIP_TYPE -EQ "Contact" |
+    ForEach-Object -Process {
+        [PSCustomObject]@{
+            Party_ID = $_.object_id
+        }
+    } |
+    Get-EBSTradingCommunityArchitectureCustomerAccount
+}
+
+function Get-EBSOrganiztaionFromEmail {
+    param (
+        [Parameter(Mandatory)]$EmailAddress
+    )
+    Get-EBSCustomerAccountFromEmail -EmailAddress $EmailAddress |
+    Get-EBSTradingCommunityArchitectureParty
+}
