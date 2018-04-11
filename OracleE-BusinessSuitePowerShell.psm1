@@ -197,18 +197,21 @@ function New-EBSSQLWhere {
     }
 
 }
+
 function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
     )
-    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+    process {
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select *
 from 
 hz_parties
 where 1 = 1
 $(if ($Party_ID) {"AND hz_parties.Party_ID = '$($Party_ID)'"})
 "@
+    }
 }
 
 function Get-EBSTradingCommunityArchitectureCustomerAccount {
@@ -218,7 +221,8 @@ function Get-EBSTradingCommunityArchitectureCustomerAccount {
         [Parameter(Mandatory,ParameterSetName="Account_Number")]$Account_Number,
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
     )
-    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+    process {
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select *
 from 
 hz_cust_accounts
@@ -227,6 +231,7 @@ $(if ($Account_Number) {"AND hz_cust_accounts.Account_Number = '$($Account_Numbe
 $(if ($Cust_Account_ID) {"AND hz_cust_accounts.Cust_Account_ID = '$($Cust_Account_ID)'"})
 $(if ($Party_ID) {"AND hz_cust_accounts.Party_ID = '$($Party_ID)'"})
 "@
+    }
 }
 
 function Get-EBSTradingCommunityArchitectureRelationship {
@@ -345,4 +350,35 @@ function Get-EBSOrganiztaionFromEmail {
     )
     Get-EBSCustomerAccountFromEmail -EmailAddress $EmailAddress |
     Get-EBSTradingCommunityArchitectureParty
+}
+
+function Get-EBSTradingCommunityArchitectureOrganizationObject {
+    param (
+        [Parameter(Mandatory)]$Party_ID
+    )
+    Get-EBSTradingCommunityArchitectureParty -Party_ID $Party_ID |
+    Add-Member -MemberType ScriptProperty -Name Account -PassThru -Value {
+        Get-EBSTradingCommunityArchitectureCustomerAccountObject -Party_ID $This.PARTY_ID
+    } |
+    Add-Member -MemberType ScriptProperty -Name Contacts -PassThru -Value {
+        Get-EBSTradingCommunityArchitectureContactObject
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureCustomerAccountObject {
+    param (
+        [Parameter(Mandatory)]$Party_ID
+    )
+    Get-EBSTradingCommunityArchitectureCustomerAccount -Party_ID $This.PARTY_ID |
+    Add-Member -MemberType ScriptProperty -Name Sites -PassThru -Value {
+        
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureSiteObject {
+
+}
+
+function Get-EBSTradingCommunityArchitectureContactObject {
+    Get-EBSTradingCommunityArchitectureRelationship -object_id
 }
