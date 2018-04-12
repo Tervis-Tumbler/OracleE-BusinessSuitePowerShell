@@ -425,14 +425,18 @@ $(if ($PhoneNumberWithoutAreaCodeWithDash) {"AND hz_contact_points.phone_number 
 
 function Get-EBSTradingCommunityArchitectureCustomerAccountSite {
     param (
-        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_account_id
     )
-    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
+    process {
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select *
 from 
 hz_cust_acct_sites_all
-where rownum <= 10
+where 1 = 1
+$(if ($cust_account_id) {"AND hz_cust_acct_sites_all.cust_account_id = $($cust_account_id)"})
 "@
+    }
 }
 
 function Get-EBSTradingCommunityArchitectureCustomerSiteUse {
