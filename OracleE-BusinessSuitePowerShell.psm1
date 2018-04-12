@@ -98,7 +98,8 @@ function Invoke-EBSSQL {
         [Parameter(Mandatory)][String]$SQLCommand,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
-    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow
+    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
+    Remove-PSObjectEmptyOrNullProperty
 }
 
 function Get-EBSUserNameAndResponsibility {
@@ -211,6 +212,49 @@ hz_parties
 where 1 = 1
 $(if ($Party_ID) {"AND hz_parties.Party_ID = '$($Party_ID)'"})
 "@
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(ValueFromPipelineByPropertyName)]$org_contact_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$party_relationship_id
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -TableName hz_org_contacts -Parameters $PSBoundParameters
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function New-EBSSQLSelect {
+    param (
+        [Parameter(Mandatory)]$TableName,
+        [Parameter(Mandatory)]$Parameters
+    )
+    $ParametersToInclude = $Parameters.GetEnumerator() | 
+    where key -ne "EBSEnvironmentConfiguration"
+
+    $OFSBeforeChange = $OFS
+    $OFS = ""
+@"
+select *
+from 
+$TableName
+where 1 = 1
+$($ParametersToInclude | New-EBSSQLWhereCondition -TableName $TableName)
+"@
+    $OFS = $OFSBeforeChange
+}
+
+function New-EBSSQLWhereCondition {
+    param (
+        [Parameter(Mandatory)]$TableName,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Key,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Value
+    )
+    process {
+        "AND $TableName.$Key = '$Value'"
     }
 }
 
@@ -368,15 +412,8 @@ function Get-EBSTradingCommunityArchitectureCustomerAccount {
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
     )
     process {
-        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select *
-from 
-hz_cust_accounts
-where 1 = 1
-$(if ($Account_Number) {"AND hz_cust_accounts.Account_Number = '$($Account_Number)'"})
-$(if ($Cust_Account_ID) {"AND hz_cust_accounts.Cust_Account_ID = '$($Cust_Account_ID)'"})
-$(if ($Party_ID) {"AND hz_cust_accounts.Party_ID = '$($Party_ID)'"})
-"@
+        $SQLCommand = New-EBSSQLSelect -TableName hz_cust_accounts -Parameters $PSBoundParameters
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
     }
 }
 
@@ -384,17 +421,11 @@ function Get-EBSTradingCommunityArchitectureRelationship {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(ValueFromPipelineByPropertyName)]$Party_ID,
-        $object_id
+        [Parameter(ValueFromPipelineByPropertyName)]$object_id
     )
     process {
-        $object_id = $Party_ID
-        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select *
-from 
-hz_relationships
-where 1 = 1
-$(if ($object_id) {"AND hz_relationships.object_id = '$($object_id)'"})
-"@
+        $SQLCommand = New-EBSSQLSelect -TableName hz_relationships -Parameters $PSBoundParameters
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
     }
 }
 
