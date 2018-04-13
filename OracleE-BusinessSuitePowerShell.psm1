@@ -251,7 +251,9 @@ function New-EBSSQLWhere {
 function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
+        
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]
+        [String]$Party_ID
     )
     process {
         $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName hz_parties
@@ -275,11 +277,12 @@ function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
 function New-EBSSQLSelect {
     param (
         [Parameter(Mandatory)]$TableName,
-        [Parameter(Mandatory)]$Parameters,
+        [Parameter(Mandatory,ParameterSetName = "Parameters")]$Parameters,
+        [Parameter(ParameterSetName = "ArbitraryWhere")]$ArbitraryWhere,
         [String[]]$ColumnsToExclude
     )
-    $ParametersToInclude = $Parameters.GetEnumerator() | 
-    where key -ne "EBSEnvironmentConfiguration"
+    $ParametersToInclude = $Parameters.GetEnumerator() |
+    Where-Object Name -NE "EBSEnvironmentConfiguration"
 
     $OFSBeforeChange = $OFS
     $OFS = ""
@@ -289,12 +292,15 @@ function New-EBSSQLSelect {
     Where-Object { $_ -notin $ColumnsToExclude -and $_ -notin $Script:PropertiesWeDontCareAbout }
 
 @"
-select 
+select
 $($ColumnsToInclude -join ",`r`n")
-from 
+from
 $TableName
 where 1 = 1
-$($ParametersToInclude | New-EBSSQLWhereCondition -TableName $TableName)
+$(
+    $ParametersToInclude | New-EBSSQLWhereCondition -TableName $TableName
+    $ArbitraryWhere
+)
 "@
     $OFS = $OFSBeforeChange
 }
@@ -302,11 +308,11 @@ $($ParametersToInclude | New-EBSSQLWhereCondition -TableName $TableName)
 function New-EBSSQLWhereCondition {
     param (
         [Parameter(Mandatory)]$TableName,
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Key,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Name,
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Value
     )
     process {
-        "AND $TableName.$Key = '$Value'"
+        "AND $TableName.$Name = '$Value'`r`n"
     }
 }
 
@@ -349,7 +355,8 @@ function Get-EBSTradingCommunityArchitectureRelationship {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(ValueFromPipelineByPropertyName)]$Party_ID,
-        [Parameter(ValueFromPipelineByPropertyName)]$object_id
+        [Parameter(ValueFromPipelineByPropertyName)]$object_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$Relationship_ID
     )
     process {
         $SQLCommand = New-EBSSQLSelect -TableName hz_relationships -Parameters $PSBoundParameters
@@ -363,23 +370,25 @@ function Get-EBSTradingCommunityArchitectureContactPoint {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(Mandatory,ParameterSetName="EmailAddress")]$EmailAddress,
         
-        [ValidatePattern("\d{3}")][
-        Parameter(Mandatory,ParameterSetName="PhoneNumber")]
+        [ValidatePattern("\d{3}")]
+        [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
         $PhoneNumberAreaCode,
         
         [ValidatePattern("\d{3}-\d{4}")]
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
-        $PhoneNumberWithoutAreaCodeWithDash
+        $PhoneNumberWithoutAreaCodeWithDash,
+        
+        [Parameter(Mandatory,ParameterSetName="owner_table_id")]
+        $owner_table_id
     )
-    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select *
-from 
-hz_contact_points
-where 1 = 1
-$(if ($EmailAddress) {"AND UPPER(hz_contact_points.email_address) = UPPER('$($EmailAddress)')"})
-$(if ($PhoneNumberAreaCode) {"AND hz_contact_points.phone_area_code = '$($PhoneNumberAreaCode)'"})
-$(if ($PhoneNumberWithoutAreaCodeWithDash) {"AND hz_contact_points.phone_number = '$($PhoneNumberWithoutAreaCodeWithDash)'"})
-"@
+
+    $ArbitraryWhere = if ($EmailAddress) {
+        "AND UPPER(hz_contact_points.email_address) = UPPER('$($EmailAddress)')"
+    }
+
+    $Parameters = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty EBSEnvironmentConfiguration, EmailAddress -AsHashTable
+    $SQLCommand = New-EBSSQLSelect -TableName hz_contact_points -Parameters $Parameters -ArbitraryWhere $ArbitraryWhere
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
 }
 
 function Get-EBSTradingCommunityArchitectureCustomerAccountSite {
@@ -498,12 +507,21 @@ function Get-EBSTradingCommunityArchitectureSiteObject {
     )
     Get-EBSTradingCommunityArchitecturePartySite -Party_ID $PARTY_ID |
     Add-Member -MemberType ScriptProperty -PassThru -Name Contacts -Value {        
-        Get-EBSTradingCommunityArchitectureOrganiztaionContact -PARTY_SITE_ID $This.PARTY_SITE_ID
+        Get-EBSTradingCommunityArchitectureContactObject -PARTY_SITE_ID $This.Party_Site_ID
     }
 }
 
 function Get-EBSTradingCommunityArchitectureContactObject {
-    Get-EBSTradingCommunityArchitectureRelationship -object_id
+    param (
+        [Parameter(Mandatory)]$PARTY_SITE_ID
+    )
+    Get-EBSTradingCommunityArchitectureOrganiztaionContact -PARTY_SITE_ID $PARTY_SITE_ID |
+    Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
+        $Relationship = Get-EBSTradingCommunityArchitectureRelationship -Relationship_ID $this.PARTY_RELATIONSHIP_ID |
+        Where-Object SUBJECT_TYPE -eq "PERSON"
+        $Party = Get-EBSTradingCommunityArchitectureParty -Party_ID $Relationship.subject_id
+        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $Party.PARTY_ID
+    }
 }
 
 filter Fix-SelectedObject {
