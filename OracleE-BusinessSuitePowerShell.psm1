@@ -99,7 +99,57 @@ function Invoke-EBSSQL {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
-    Remove-PSObjectEmptyOrNullProperty
+    Remove-PSObjectEmptyOrNullProperty |
+    Remove-EBSSQLPropertiesWeDontCareAbout
+}
+
+function Get-EBSSQLTableColumnName {
+    param (
+        [Parameter(Mandatory)]$TableName,
+        $OwnerSchemaUser
+    )
+    Invoke-EBSSQL -SQLCommand @"
+select COLUMN_NAME 
+from ALL_TAB_COLUMNS
+where 1 = 1
+$(if($OwnerSchemaUser) {"AND OWNER = '$($OwnerSchemaUser.ToUpper())'"})
+AND TABLE_NAME = '$($TableName.ToUpper())'
+order by COLUMN_NAME
+"@ | 
+    Select-Object -ExpandProperty COLUMN_NAME
+}
+
+$Script:PropertiesWeDontCareAbout = @"
+ACTUAL_CONTENT_SOURCE
+CREATED_BY
+CREATED_BY_MODULE
+CREATION_DATE
+LAST_UPDATED_BY
+LAST_UPDATE_DATE
+LAST_UPDATE_LOGIN
+OBJECT_VERSION_NUMBER
+PROGRAM_APPLICATION_ID
+PROGRAM_ID
+PROGRAM_UPDATE_DATE
+REQUEST_ID
+ORIG_SYSTEM_REFERENCE
+CUST_ACCOUNT_ID
+"@ -split "`r`n"
+
+function Remove-EBSSQLPropertiesWeDontCareAbout {
+    param (
+        [Parameter(Mandatory,ValueFromPipeline)]$PSObject
+    )
+    process {
+        $PSObject.psobject.Properties |
+		Where-Object { 
+            $_.name -in $Script:PropertiesWeDontCareAbout          
+        } |
+		ForEach-Object {
+			$PsObject.psobject.Properties.Remove($_.name)
+        }
+        $PSObject
+    }
 }
 
 function Get-EBSUserNameAndResponsibility {
@@ -225,15 +275,22 @@ function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
 function New-EBSSQLSelect {
     param (
         [Parameter(Mandatory)]$TableName,
-        [Parameter(Mandatory)]$Parameters
+        [Parameter(Mandatory)]$Parameters,
+        [String[]]$ColumnsToExclude
     )
     $ParametersToInclude = $Parameters.GetEnumerator() | 
     where key -ne "EBSEnvironmentConfiguration"
 
     $OFSBeforeChange = $OFS
     $OFS = ""
+
+    $ColumnNames = Get-EBSSQLTableColumnName -TableName $TableName
+    $ColumnsToInclude = $ColumnNames | 
+    Where-Object { $_ -notin $ColumnsToExclude -and $_ -notin $Script:PropertiesWeDontCareAbout }
+
 @"
-select *
+select 
+$($ColumnsToInclude -join ",`r`n")
 from 
 $TableName
 where 1 = 1
@@ -270,127 +327,8 @@ function Get-EBSTradingCommunityArchitectureLocation {
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Location_ID
     )
     process {
-        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select 
-LOCATION_ID ,
-LAST_UPDATE_DATE ,
-LAST_UPDATED_BY ,
-CREATION_DATE ,
-CREATED_BY ,
-LAST_UPDATE_LOGIN ,
-REQUEST_ID ,
-PROGRAM_APPLICATION_ID ,
-PROGRAM_ID ,
-PROGRAM_UPDATE_DATE ,
-WH_UPDATE_DATE ,
-ATTRIBUTE_CATEGORY ,
-ATTRIBUTE1 ,
-ATTRIBUTE2 ,
-ATTRIBUTE3 ,
-ATTRIBUTE4 ,
-ATTRIBUTE5 ,
-ATTRIBUTE6 ,
-ATTRIBUTE7 ,
-ATTRIBUTE8 ,
-ATTRIBUTE9 ,
-ATTRIBUTE10 ,
-ATTRIBUTE11 ,
-ATTRIBUTE12 ,
-ATTRIBUTE13 ,
-ATTRIBUTE14 ,
-ATTRIBUTE15 ,
-ATTRIBUTE16 ,
-ATTRIBUTE17 ,
-ATTRIBUTE18 ,
-ATTRIBUTE19 ,
-ATTRIBUTE20 ,
-GLOBAL_ATTRIBUTE_CATEGORY ,
-GLOBAL_ATTRIBUTE1 ,
-GLOBAL_ATTRIBUTE2 ,
-GLOBAL_ATTRIBUTE3 ,
-GLOBAL_ATTRIBUTE4 ,
-GLOBAL_ATTRIBUTE5 ,
-GLOBAL_ATTRIBUTE6 ,
-GLOBAL_ATTRIBUTE7 ,
-GLOBAL_ATTRIBUTE8 ,
-GLOBAL_ATTRIBUTE9 ,
-GLOBAL_ATTRIBUTE10 ,
-GLOBAL_ATTRIBUTE11 ,
-GLOBAL_ATTRIBUTE12 ,
-GLOBAL_ATTRIBUTE13 ,
-GLOBAL_ATTRIBUTE14 ,
-GLOBAL_ATTRIBUTE15 ,
-GLOBAL_ATTRIBUTE16 ,
-GLOBAL_ATTRIBUTE17 ,
-GLOBAL_ATTRIBUTE18 ,
-GLOBAL_ATTRIBUTE19 ,
-GLOBAL_ATTRIBUTE20 ,
-ORIG_SYSTEM_REFERENCE ,
-COUNTRY ,
-ADDRESS1 ,
-ADDRESS2 ,
-ADDRESS3 ,
-ADDRESS4 ,
-CITY ,
-POSTAL_CODE ,
-STATE ,
-PROVINCE ,
-COUNTY ,
-ADDRESS_KEY ,
-ADDRESS_STYLE ,
-VALIDATED_FLAG ,
-ADDRESS_LINES_PHONETIC ,
-APARTMENT_FLAG ,
-PO_BOX_NUMBER ,
-HOUSE_NUMBER ,
-STREET_SUFFIX ,
-APARTMENT_NUMBER ,
-SECONDARY_SUFFIX_ELEMENT ,
-STREET ,
-RURAL_ROUTE_TYPE ,
-RURAL_ROUTE_NUMBER ,
-STREET_NUMBER ,
-BUILDING ,
-FLOOR ,
-SUITE ,
-ROOM ,
-POSTAL_PLUS4_CODE ,
-TIME_ZONE ,
-OVERSEAS_ADDRESS_FLAG ,
-POST_OFFICE ,
-POSITION ,
-DELIVERY_POINT_CODE ,
-LOCATION_DIRECTIONS ,
-ADDRESS_EFFECTIVE_DATE ,
-ADDRESS_EXPIRATION_DATE ,
-ADDRESS_ERROR_CODE ,
-CLLI_CODE ,
-DODAAC ,
-TRAILING_DIRECTORY_CODE ,
-LANGUAGE ,
-LIFE_CYCLE_STATUS ,
-SHORT_DESCRIPTION ,
-DESCRIPTION ,
-CONTENT_SOURCE_TYPE ,
-LOC_HIERARCHY_ID ,
-SALES_TAX_GEOCODE ,
-SALES_TAX_INSIDE_CITY_LIMITS ,
-FA_LOCATION_ID ,
-OBJECT_VERSION_NUMBER ,
-CREATED_BY_MODULE ,
-APPLICATION_ID ,
-TIMEZONE_ID ,
-GEOMETRY_STATUS_CODE ,
-ACTUAL_CONTENT_SOURCE ,
-VALIDATION_STATUS_CODE ,
-DATE_VALIDATED ,
-DO_NOT_VALIDATE_FLAG ,
-GEOMETRY_SOURCE 
-from 
-hz_locations
-where 1 = 1
-$(if ($Location_ID) {"AND hz_locations.Location_ID = '$($Location_ID)'"})
-"@
+        $SQLCommand = New-EBSSQLSelect -TableName "hz_locations" -ColumnsToExclude GEOMETRY -Parameters $PSBoundParameters        
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
     }
 }
 
@@ -546,7 +484,11 @@ function Get-EBSTradingCommunityArchitectureCustomerAccountObject {
     )
     Get-EBSTradingCommunityArchitectureCustomerAccount -Party_ID $PARTY_ID |
     Add-Member -MemberType ScriptProperty -Name Sites -PassThru -Value {
-        Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PARTY_ID
+        $Sites = Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PARTY_ID
+        #$Sites.SyncRoot
+        #$Sites | % { $_ }
+        #@($Sites)
+        $Sites
     }
 }
 
@@ -562,4 +504,34 @@ function Get-EBSTradingCommunityArchitectureSiteObject {
 
 function Get-EBSTradingCommunityArchitectureContactObject {
     Get-EBSTradingCommunityArchitectureRelationship -object_id
+}
+
+filter Fix-SelectedObject {
+    foreach ($prop in (Get-Member -InputObject $_ -Type Properties)) {
+        if (($val = $_.$($prop.Name)) -is [array]) {
+            $_ | Add-Member -Force -MemberType NoteProperty -Name $prop.Name -Value (@($val) | Fix-SelectedObject)
+        }
+    }
+}
+
+function Invoke-FixSelectedObjectBug {
+    param (
+        [Parameter(Mandatory,ValueFromPipeline)][Ref]$Object,
+        [Switch]$PassThru
+    )
+    process {
+        foreach ($prop in (Get-Member -InputObject $Object.Value -Type Properties)) {            
+            if (($val = $Object.Value.$($prop.Name)) -is [array]) {
+                $Object.Value | Add-Member -Force -MemberType NoteProperty -Name $prop.Name -Value @($val)
+                if ($prop.Name -ne "syncroot") {
+                    [ref]($Object.Value.$($prop.Name)) | Invoke-FixSelectedObjectBug
+                }
+            } elseif (($val = $Object.Value.$($prop.Name)) -is [System.Management.Automation.PSCustomObject]) {
+                if ($prop.Name -ne "syncroot") {
+                    [ref]($Object.Value.$($prop.Name)) | Invoke-FixSelectedObjectBug
+                }
+            }
+        }
+        if ($PassThru) { $Object.Value }    
+    }
 }
