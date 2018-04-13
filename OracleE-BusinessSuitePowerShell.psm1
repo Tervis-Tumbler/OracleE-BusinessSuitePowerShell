@@ -196,7 +196,6 @@ function New-EBSSQLWhere {
     foreach ($Parameter in $Parameters) {
         "AND $TableName.$($Parameter.Name) = '$($Parameter.Value.ToUpper())'"
     }
-
 }
 
 function Get-EBSTradingCommunityArchitectureParty {
@@ -205,13 +204,8 @@ function Get-EBSTradingCommunityArchitectureParty {
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
     )
     process {
-        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select *
-from 
-hz_parties
-where 1 = 1
-$(if ($Party_ID) {"AND hz_parties.Party_ID = '$($Party_ID)'"})
-"@
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName hz_parties
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
     }
 }
 
@@ -219,7 +213,8 @@ function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(ValueFromPipelineByPropertyName)]$org_contact_id,
-        [Parameter(ValueFromPipelineByPropertyName)]$party_relationship_id
+        [Parameter(ValueFromPipelineByPropertyName)]$party_relationship_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$PARTY_SITE_ID
     )
     process {
         $SQLCommand = New-EBSSQLSelect -TableName hz_org_contacts -Parameters $PSBoundParameters
@@ -264,13 +259,8 @@ function Get-EBSTradingCommunityArchitecturePartySite {
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
     )
     process {
-        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
-select *
-from 
-HZ_PARTY_SITES
-where 1 = 1
-$(if ($Party_ID) {"AND HZ_PARTY_SITES.Party_ID = '$($Party_ID)'"})
-"@
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName HZ_PARTY_SITES 
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
     }
 }
 
@@ -542,7 +532,11 @@ function Get-EBSTradingCommunityArchitectureOrganizationObject {
         Get-EBSTradingCommunityArchitectureCustomerAccountObject -Party_ID $This.PARTY_ID
     } |
     Add-Member -MemberType ScriptProperty -Name Contacts -PassThru -Value {
-        Get-EBSTradingCommunityArchitectureContactObject
+        Get-EBSTradingCommunityArchitectureRelationship -object_id $This.Party_ID |
+        foreach {
+            Get-EBSTradingCommunityArchitectureOrganiztaionContact -party_relationship_id $_.RELATIONSHIP_ID |
+            where {-not $_.Party_Site_ID }
+        }        
     }
 }
 
@@ -550,14 +544,20 @@ function Get-EBSTradingCommunityArchitectureCustomerAccountObject {
     param (
         [Parameter(Mandatory)]$Party_ID
     )
-    Get-EBSTradingCommunityArchitectureCustomerAccount -Party_ID $This.PARTY_ID |
+    Get-EBSTradingCommunityArchitectureCustomerAccount -Party_ID $PARTY_ID |
     Add-Member -MemberType ScriptProperty -Name Sites -PassThru -Value {
-        
+        Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PARTY_ID
     }
 }
 
 function Get-EBSTradingCommunityArchitectureSiteObject {
-
+    param (
+        [Parameter(Mandatory)]$Party_ID
+    )
+    Get-EBSTradingCommunityArchitecturePartySite -Party_ID $PARTY_ID |
+    Add-Member -MemberType ScriptProperty -PassThru -Name Contacts -Value {        
+        Get-EBSTradingCommunityArchitectureOrganiztaionContact -PARTY_SITE_ID $This.PARTY_SITE_ID
+    }
 }
 
 function Get-EBSTradingCommunityArchitectureContactObject {
