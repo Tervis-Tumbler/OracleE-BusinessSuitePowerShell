@@ -103,12 +103,16 @@ function Invoke-EBSSQL {
     Remove-EBSSQLPropertiesWeDontCareAbout
 }
 
+$Script:ColumnNameCache = @{}
+
 function Get-EBSSQLTableColumnName {
     param (
         [Parameter(Mandatory)]$TableName,
         $OwnerSchemaUser
     )
-    Invoke-EBSSQL -SQLCommand @"
+    $ColumnNames = $Script:ColumnNameCache[$TableName]
+    if ( -not $ColumnNames) {
+        $ColumnNames = Invoke-EBSSQL -SQLCommand @"
 select COLUMN_NAME 
 from ALL_TAB_COLUMNS
 where 1 = 1
@@ -116,7 +120,10 @@ $(if($OwnerSchemaUser) {"AND OWNER = '$($OwnerSchemaUser.ToUpper())'"})
 AND TABLE_NAME = '$($TableName.ToUpper())'
 order by COLUMN_NAME
 "@ | 
-    Select-Object -ExpandProperty COLUMN_NAME
+        Select-Object -ExpandProperty COLUMN_NAME
+        $Script:ColumnNameCache.Add($TableName, $ColumnNames)
+    }
+    $ColumnNames
 }
 
 $Script:PropertiesWeDontCareAbout = @"
@@ -308,10 +315,12 @@ $(
 function New-EBSSQLWhereCondition {
     param (
         [Parameter(Mandatory)]$TableName,
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Name,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Name")]$Name,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Key")]$Key,
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Value
     )
     process {
+        if ($Key) {$Name = $Key}
         "AND $TableName.$Name = '$Value'`r`n"
     }
 }
