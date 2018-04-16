@@ -284,8 +284,8 @@ function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
 function New-EBSSQLSelect {
     param (
         [Parameter(Mandatory)]$TableName,
-        [Parameter(Mandatory,ParameterSetName = "Parameters")]$Parameters,
-        [Parameter(ParameterSetName = "ArbitraryWhere")]$ArbitraryWhere,
+        [Parameter(Mandatory)]$Parameters,
+        $ArbitraryWhere,
         [String[]]$ColumnsToExclude
     )
     $ParametersToInclude = $Parameters.GetEnumerator() |
@@ -313,6 +313,7 @@ $(
 }
 
 function New-EBSSQLWhereCondition {
+    [Cmdletbinding(DefaultParameterSetName="Name")]
     param (
         [Parameter(Mandatory)]$TableName,
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Name")]$Name,
@@ -490,7 +491,7 @@ function Get-EBSTradingCommunityArchitectureOrganizationObject {
     Add-Member -MemberType ScriptProperty -Name Contacts -PassThru -Value {
         Get-EBSTradingCommunityArchitectureRelationship -object_id $This.Party_ID |
         foreach {
-            Get-EBSTradingCommunityArchitectureOrganiztaionContact -party_relationship_id $_.RELATIONSHIP_ID |
+            Get-EBSTradingCommunityArchitectureContactObject -party_relationship_id $_.RELATIONSHIP_ID |
             where {-not $_.Party_Site_ID }
         }        
     }
@@ -522,14 +523,14 @@ function Get-EBSTradingCommunityArchitectureSiteObject {
 
 function Get-EBSTradingCommunityArchitectureContactObject {
     param (
-        [Parameter(Mandatory)]$PARTY_SITE_ID
+        [Parameter(Mandatory,ParameterSetName = "PARTY_SITE_ID")]$PARTY_SITE_ID,
+        [Parameter(Mandatory,ParameterSetName = "party_relationship_id")]$party_relationship_id
     )
-    Get-EBSTradingCommunityArchitectureOrganiztaionContact -PARTY_SITE_ID $PARTY_SITE_ID |
+    Get-EBSTradingCommunityArchitectureOrganiztaionContact @PSBoundParameters |
     Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
         $Relationship = Get-EBSTradingCommunityArchitectureRelationship -Relationship_ID $this.PARTY_RELATIONSHIP_ID |
         Where-Object SUBJECT_TYPE -eq "PERSON"
-        $Party = Get-EBSTradingCommunityArchitectureParty -Party_ID $Relationship.subject_id
-        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $Party.PARTY_ID
+        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $Relationship.PARTY_ID
     }
 }
 
