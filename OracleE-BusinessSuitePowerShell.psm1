@@ -329,7 +329,8 @@ function New-EBSSQLWhereCondition {
 function Get-EBSTradingCommunityArchitecturePartySite {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Party_ID,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="PARTY_SITE_NUMBER")]$PARTY_SITE_NUMBER
     )
     process {
         $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName HZ_PARTY_SITES 
@@ -488,12 +489,8 @@ function Get-EBSTradingCommunityArchitectureOrganizationObject {
     Add-Member -MemberType ScriptProperty -Name Account -PassThru -Value {
         Get-EBSTradingCommunityArchitectureCustomerAccountObject -Party_ID $This.PARTY_ID
     } |
-    Add-Member -MemberType ScriptProperty -Name Contacts -PassThru -Value {
-        Get-EBSTradingCommunityArchitectureRelationship -object_id $This.Party_ID |
-        foreach {
-            Get-EBSTradingCommunityArchitectureContactObject -party_relationship_id $_.RELATIONSHIP_ID |
-            where {-not $_.Party_Site_ID }
-        }        
+    Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
+        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $This.PARTY_ID
     }
 }
 
@@ -502,12 +499,15 @@ function Get-EBSTradingCommunityArchitectureCustomerAccountObject {
         [Parameter(Mandatory)]$Party_ID
     )
     Get-EBSTradingCommunityArchitectureCustomerAccount -Party_ID $PARTY_ID |
-    Add-Member -MemberType ScriptProperty -Name Sites -PassThru -Value {
-        $Sites = Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PARTY_ID
-        #$Sites.SyncRoot
-        #$Sites | % { $_ }
-        #@($Sites)
-        $Sites
+    Add-Member -MemberType ScriptProperty -Name Site -PassThru -Value {
+        Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PARTY_ID
+    } |
+    Add-Member -MemberType ScriptProperty -Name Contact -PassThru -Value {
+        Get-EBSTradingCommunityArchitectureRelationship -object_id $This.Party_ID |
+        foreach {
+            Get-EBSTradingCommunityArchitectureContactObject -party_relationship_id $_.RELATIONSHIP_ID |
+            where {-not $_.Party_Site_ID }
+        }        
     }
 }
 
@@ -516,8 +516,14 @@ function Get-EBSTradingCommunityArchitectureSiteObject {
         [Parameter(Mandatory)]$Party_ID
     )
     Get-EBSTradingCommunityArchitecturePartySite -Party_ID $PARTY_ID |
-    Add-Member -MemberType ScriptProperty -PassThru -Name Contacts -Value {        
+    Add-Member -MemberType ScriptProperty -PassThru -Name Contact -Value {        
         Get-EBSTradingCommunityArchitectureContactObject -PARTY_SITE_ID $This.Party_Site_ID
+    } |
+    Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
+        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $This.PARTY_SITE_ID
+    } |
+    Add-Member -PassThru -MemberType ScriptProperty -Name Location -Value {
+        Get-EBSTradingCommunityArchitectureLocation -Location_ID $This.Location_ID
     }
 }
 
@@ -527,11 +533,16 @@ function Get-EBSTradingCommunityArchitectureContactObject {
         [Parameter(Mandatory,ParameterSetName = "party_relationship_id")]$party_relationship_id
     )
     Get-EBSTradingCommunityArchitectureOrganiztaionContact @PSBoundParameters |
-    Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
-        $Relationship = Get-EBSTradingCommunityArchitectureRelationship -Relationship_ID $this.PARTY_RELATIONSHIP_ID |
+    Add-Member -PassThru -MemberType ScriptProperty -Name PartyRelationship -Value {
+        Get-EBSTradingCommunityArchitectureRelationship -Relationship_ID $this.PARTY_RELATIONSHIP_ID |
         Where-Object SUBJECT_TYPE -eq "PERSON"
-        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $Relationship.PARTY_ID
-    }
+    } |
+    Add-Member -PassThru -MemberType ScriptProperty -Name ContactPoint -Value {
+        Get-EBSTradingCommunityArchitectureContactPoint -owner_table_id $This.PartyRelationship.PARTY_ID
+    } |
+    Add-Member -PassThru -MemberType ScriptProperty -Name Site -Value {
+        Get-EBSTradingCommunityArchitectureSiteObject -Party_ID $This.PartyRelationship.PARTY_ID
+    } 
 }
 
 filter Fix-SelectedObject {
