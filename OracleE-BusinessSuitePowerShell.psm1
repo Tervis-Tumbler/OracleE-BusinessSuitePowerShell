@@ -260,7 +260,10 @@ function Get-EBSTradingCommunityArchitectureParty {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         
         [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]
-        [String]$Party_ID
+        [String]$Party_ID,
+
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_Number")]
+        [String]$Party_Number
     )
     process {
         $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName hz_parties
@@ -545,32 +548,11 @@ function Get-EBSTradingCommunityArchitectureContactObject {
     } 
 }
 
-filter Fix-SelectedObject {
-    foreach ($prop in (Get-Member -InputObject $_ -Type Properties)) {
-        if (($val = $_.$($prop.Name)) -is [array]) {
-            $_ | Add-Member -Force -MemberType NoteProperty -Name $prop.Name -Value (@($val) | Fix-SelectedObject)
-        }
-    }
-}
-
-function Invoke-FixSelectedObjectBug {
+function EBSTradingCommunityArchitectureOrganizationLogicalObject {
     param (
-        [Parameter(Mandatory,ValueFromPipeline)][Ref]$Object,
-        [Switch]$PassThru
+        [Parameter(Mandatory)]$Party_ID
     )
-    process {
-        foreach ($prop in (Get-Member -InputObject $Object.Value -Type Properties)) {            
-            if (($val = $Object.Value.$($prop.Name)) -is [array]) {
-                $Object.Value | Add-Member -Force -MemberType NoteProperty -Name $prop.Name -Value @($val)
-                if ($prop.Name -ne "syncroot") {
-                    [ref]($Object.Value.$($prop.Name)) | Invoke-FixSelectedObjectBug
-                }
-            } elseif (($val = $Object.Value.$($prop.Name)) -is [System.Management.Automation.PSCustomObject]) {
-                if ($prop.Name -ne "syncroot") {
-                    [ref]($Object.Value.$($prop.Name)) | Invoke-FixSelectedObjectBug
-                }
-            }
-        }
-        if ($PassThru) { $Object.Value }    
-    }
+    $OrganizationObject = Get-EBSTradingCommunityArchitectureOrganizationObject @PSBoundParameters
+
+    $OrganizationObject | Select-Object -Property 
 }
