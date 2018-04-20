@@ -276,7 +276,8 @@ function Get-EBSTradingCommunityArchitectureOrganiztaionContact {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(ValueFromPipelineByPropertyName)]$org_contact_id,
         [Parameter(ValueFromPipelineByPropertyName)]$party_relationship_id,
-        [Parameter(ValueFromPipelineByPropertyName)]$PARTY_SITE_ID
+        [Parameter(ValueFromPipelineByPropertyName)]$PARTY_SITE_ID,
+        [Parameter(ValueFromPipelineByPropertyName)]$Contact_Number
     )
     process {
         $SQLCommand = New-EBSSQLSelect -TableName hz_org_contacts -Parameters $PSBoundParameters
@@ -344,7 +345,10 @@ function Get-EBSTradingCommunityArchitecturePartySite {
 function Get-EBSTradingCommunityArchitectureLocation {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Location_ID
+        [Parameter(ValueFromPipelineByPropertyName)]$Location_ID,
+        [Parameter(ValueFromPipelineByPropertyName)]$Address1,
+        [Parameter(ValueFromPipelineByPropertyName)]$Postal_Code,
+        [Parameter(ValueFromPipelineByPropertyName)]$State
     )
     process {
         $SQLCommand = New-EBSSQLSelect -TableName "hz_locations" -ColumnsToExclude GEOMETRY -Parameters $PSBoundParameters        
@@ -370,6 +374,7 @@ function Get-EBSTradingCommunityArchitectureRelationship {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(ValueFromPipelineByPropertyName)]$Party_ID,
         [Parameter(ValueFromPipelineByPropertyName)]$object_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$subject_id,
         [Parameter(ValueFromPipelineByPropertyName)]$Relationship_ID
     )
     process {
@@ -386,11 +391,11 @@ function Get-EBSTradingCommunityArchitectureContactPoint {
         
         [ValidatePattern("\d{3}")]
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
-        $PhoneNumberAreaCode,
+        $Phone_Area_Code,
         
         [ValidatePattern("\d{3}-\d{4}")]
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
-        $PhoneNumberWithoutAreaCodeWithDash,
+        $Phone_Number,
         
         [Parameter(Mandatory,ParameterSetName="owner_table_id")]
         $owner_table_id
