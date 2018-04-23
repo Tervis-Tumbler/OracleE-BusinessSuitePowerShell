@@ -53,7 +53,7 @@ FilteredParties AS (
         AND Parties.PERSON_LAST_NAME = :Person_Last_Name        
     ) OR (
         Parties.PERSON_FIRST_NAME = :Person_First_Name
-        AND :PERSON_LAST_NAME IS NULL
+        AND :Person_Last_Name IS NULL
     )
 ),
 OrganizationParty AS (
