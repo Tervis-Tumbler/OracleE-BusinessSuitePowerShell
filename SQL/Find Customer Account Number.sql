@@ -1,13 +1,14 @@
 WITH 
-FilteredContactPoints AS (
+FilteredEmailContactPoints AS (
     SELECT *
     FROM hz_contact_points ContactPoints
-    WHERE 1 = 2
-    OR UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
-    OR (
-        ContactPoints.Phone_Area_Code = :Phone_Area_Code
-        AND ContactPoints.Phone_Number = :Phone_Number
-    )
+    WHERE UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
+),
+FilteredPhoneNumContactPoints AS (
+    SELECT *
+    FROM hz_contact_points ContactPoints
+    WHERE ContactPoints.Phone_Area_Code = :Phone_Area_Code
+    AND ContactPoints.Phone_Number = :Phone_Number
 ),
 FilteredLocations AS (
     SELECT * 
@@ -64,7 +65,7 @@ OrganizationParty AS (
     AND apps.hz_parties.status = 'A'
 ),
 -- Search via Phone Number and Email Address
-AccountNumberFromContactPoints AS (
+AcctNumFromEmailContactPoint AS (
     (
         -- Organization > Account > Site > Communication
         SELECT Distinct CustomerAccount.Account_Number
@@ -73,7 +74,7 @@ AccountNumberFromContactPoints AS (
         ON OrganizationParty.party_id = CustomerAccount.party_id
         JOIN HZ_PARTY_SITES OrganizationSite
         ON OrganizationParty.party_id = OrganizationSite.party_id
-            JOIN FilteredContactPoints OrganizationSiteContactPoints
+            JOIN FilteredEmailContactPoints OrganizationSiteContactPoints
             ON OrganizationSite.party_site_id = OrganizationSiteContactPoints.OWNER_TABLE_ID
     )
     UNION
@@ -82,7 +83,7 @@ AccountNumberFromContactPoints AS (
         SELECT Distinct CustomerAccount.Account_Number
         FROM OrganizationParty
         JOIN apps.hz_cust_accounts_all CustomerAccount  ON OrganizationParty.party_id = CustomerAccount.party_id
-        JOIN FilteredContactPoints OrganizationContactPoints
+        JOIN FilteredEmailContactPoints OrganizationContactPoints
           ON OrganizationParty.party_id = OrganizationContactPoints.OWNER_TABLE_ID
     )
     UNION
@@ -96,7 +97,7 @@ AccountNumberFromContactPoints AS (
         ON OrganizationParty.party_id = PartyRelationship.object_id
             JOIN apps.hz_parties OrgPartyRelationshipParty --OrganizationPartyRelationshipParty
             ON PartyRelationship.subject_id = OrgPartyRelationshipParty.party_id
-                JOIN FilteredContactPoints OrgPartyRelPartyContactPoint --OrganizationPartyRelationshipPartyContactPoint
+                JOIN FilteredEmailContactPoints OrgPartyRelPartyContactPoint --OrganizationPartyRelationshipPartyContactPoint
                 ON OrgPartyRelationshipParty.party_id = OrgPartyRelPartyContactPoint.OWNER_TABLE_ID
     )
     UNION
@@ -111,7 +112,58 @@ AccountNumberFromContactPoints AS (
           ON OrganizationParty.party_id = PartyRelationship.object_id
             JOIN apps.hz_parties OrgContPartyRelationshipParty --OrganizationContactPartyRelationshipParty
               ON PartyRelationship.party_id = OrgContPartyRelationshipParty.party_id
-                JOIN FilteredContactPoints OrgContPartRelPartyContPoint --OrganizationContactPartyRelationshipPartyContactPoint
+                JOIN FilteredEmailContactPoints OrgContPartRelPartyContPoint --OrganizationContactPartyRelationshipPartyContactPoint
+                  ON OrgContPartyRelationshipParty.party_id = OrgContPartRelPartyContPoint.OWNER_TABLE_ID
+    )
+),
+AcctNumFromPhoneNumContPoint AS (
+    (
+        -- Organization > Account > Site > Communication
+        SELECT Distinct CustomerAccount.Account_Number
+        FROM OrganizationParty
+        JOIN apps.hz_cust_accounts_all CustomerAccount 
+        ON OrganizationParty.party_id = CustomerAccount.party_id
+        JOIN HZ_PARTY_SITES OrganizationSite
+        ON OrganizationParty.party_id = OrganizationSite.party_id
+            JOIN FilteredPhoneNumContactPoints OrganizationSiteContactPoints
+            ON OrganizationSite.party_site_id = OrganizationSiteContactPoints.OWNER_TABLE_ID
+    )
+    UNION
+    (
+        -- Organization > Communication
+        SELECT Distinct CustomerAccount.Account_Number
+        FROM OrganizationParty
+        JOIN apps.hz_cust_accounts_all CustomerAccount  ON OrganizationParty.party_id = CustomerAccount.party_id
+        JOIN FilteredPhoneNumContactPoints OrganizationContactPoints
+          ON OrganizationParty.party_id = OrganizationContactPoints.OWNER_TABLE_ID
+    )
+    UNION
+    (
+        -- Organization > Party Relationships [Person] > Communication
+        SELECT Distinct CustomerAccount.Account_Number
+        FROM OrganizationParty
+        JOIN apps.hz_cust_accounts_all CustomerAccount 
+        ON OrganizationParty.party_id = CustomerAccount.party_id
+        JOIN apps.hz_relationships PartyRelationship
+        ON OrganizationParty.party_id = PartyRelationship.object_id
+            JOIN apps.hz_parties OrgPartyRelationshipParty --OrganizationPartyRelationshipParty
+            ON PartyRelationship.subject_id = OrgPartyRelationshipParty.party_id
+                JOIN FilteredPhoneNumContactPoints OrgPartyRelPartyContactPoint --OrganizationPartyRelationshipPartyContactPoint
+                ON OrgPartyRelationshipParty.party_id = OrgPartyRelPartyContactPoint.OWNER_TABLE_ID
+    )
+    UNION
+    (
+        -- Organization > Account > Communication > Contact
+        -- Would have to do something to exclude contacts with site Ids to not get the following as well
+        -- Organization > Account > Site > Communication > Contact 
+        SELECT Distinct CustomerAccount.Account_Number
+        FROM OrganizationParty
+        JOIN apps.hz_cust_accounts_all CustomerAccount  ON OrganizationParty.party_id = CustomerAccount.party_id
+        JOIN apps.hz_relationships PartyRelationship
+          ON OrganizationParty.party_id = PartyRelationship.object_id
+            JOIN apps.hz_parties OrgContPartyRelationshipParty --OrganizationContactPartyRelationshipParty
+              ON PartyRelationship.party_id = OrgContPartyRelationshipParty.party_id
+                JOIN FilteredPhoneNumContactPoints OrgContPartRelPartyContPoint --OrganizationContactPartyRelationshipPartyContactPoint
                   ON OrgContPartyRelationshipParty.party_id = OrgContPartRelPartyContPoint.OWNER_TABLE_ID
     )
 ),
@@ -162,15 +214,41 @@ AccountNumberPersonName AS (
 
     SELECT *
     FROM  
-    AccountNumberFromContactPoints
+    AcctNumFromEmailContactPoint
     WHERE Account_Number in (
+        Select Account_Number
+        FROM AcctNumFromPhoneNumContPoint
+        UNION
         Select Account_Number
         FROM AccountNumberFromLocations
         UNION
         Select Account_Number
         FROM AccountNumberPersonName
-    ) OR (    
-        :Address1 IS NULL
+    ) OR (
+        :Phone_Area_Code IS NULL
+        AND :Phone_Number IS NULL
+        AND :Address1 IS NULL
+        AND :Postal_Code IS NULL
+        AND :State IS NULL
+        AND :Person_First_Name IS NULL
+        AND :Person_Last_Name IS NULL
+    )
+UNION
+    SELECT *
+    FROM  
+    AcctNumFromPhoneNumContPoint
+    WHERE Account_Number in (
+        Select Account_Number
+        FROM AcctNumFromEmailContactPoint
+        UNION
+        Select Account_Number
+        FROM AccountNumberFromLocations
+        UNION
+        Select Account_Number
+        FROM AccountNumberPersonName
+    ) OR (
+        :Email_Address IS NULL
+        AND :Address1 IS NULL
         AND :Postal_Code IS NULL
         AND :State IS NULL
         AND :Person_First_Name IS NULL
@@ -182,7 +260,10 @@ UNION
     AccountNumberFromLocations
     WHERE Account_Number in (
         Select Account_Number
-        FROM AccountNumberFromContactPoints
+        FROM AcctNumFromEmailContactPoint
+        UNION
+        Select Account_Number
+        FROM AcctNumFromPhoneNumContPoint
         UNION
         Select Account_Number
         FROM AccountNumberPersonName
@@ -199,7 +280,10 @@ UNION
     AccountNumberPersonName
     WHERE Account_Number in (
         Select Account_Number
-        FROM AccountNumberFromContactPoints
+        FROM AcctNumFromEmailContactPoint
+        UNION
+        Select Account_Number
+        FROM AcctNumFromPhoneNumContPoint
         UNION
         Select Account_Number
         FROM AccountNumberFromLocations
