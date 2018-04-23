@@ -1,4 +1,5 @@
-Import-Module -Force OracleE-BusinessSuitePowerShell
+ipmo -Force OracleE-BusinessSuitePowerShell, TervisOracleE-BusinessSuitePowerShell, InvokeSQL
+
 Describe "OracleE-BusinessSuitePowerShell" {
     It "New-EBSSQLWhereCondition" {
         $OFSBeforeChange = $OFS
@@ -46,5 +47,69 @@ AND TableName.Thing = 'Value'
 AND TableName.Thing2 = 'Value2'
 
 "@
+    }
+}
+
+Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
+    Context "Search via Phone Number and Email Address" {
+        It "Organization > Communication > Phone Number" {
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code 941 -Phone_Number 555-1111
+            $AccountNumber | Should -Be 25496989
+        }
+
+        It "Organization > Communication > Phone Number that doesn't exist" {
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code 941 -Phone_Number 555-0000
+            $AccountNumber | Should -BeNullOrEmpty
+        }
+        
+        It "Organization > Communication > Email Address" {
+            $AccountNumber = Find-CustomerAccountNumber -Email_Address "org@25496989.com"
+            $AccountNumber | Should -Be 25496989
+        }
+
+        It "Organization > Communication > Email Address that doesn't exist" {
+            $AccountNumber = Find-CustomerAccountNumber -Email_Address "org@0000.com"
+            $AccountNumber | Should -BeNullOrEmpty
+        }
+
+        It "Organization > Party Relationships [Person] > Communication" {
+
+        }
+
+        It "Organization > Account > Communication > Contact" {
+
+        }
+
+        It "Organization > Account > Site > Communication > Contact" {
+
+        }
+
+        It "Organization > Account > Site > Communication" {
+
+        }
+    }
+
+    Context "Search via Address1, Postal_Code, City" {
+        It "Organization > Account > Communication > Contact > Contact Addresses > Location" {
+
+        }
+
+        It "Organization > Account > Site > Communication > Contact > Colntact Addresses > Location" {
+
+        }
+
+        It "Organization > Account > Site > Location" {
+
+        }
+    }
+
+    Context "Search via Person_First_Name, Person_Last_Name" {
+        It "Organization > Account > Communication > Contact" {
+
+        }
+
+        It "Organization > Account > Site > Communication > Contact" {
+
+        }
     }
 }
