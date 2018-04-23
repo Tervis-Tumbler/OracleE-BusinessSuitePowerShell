@@ -259,10 +259,10 @@ function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName]
         [String]$Party_ID,
 
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName,ParameterSetName="Party_Number")]
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName]
         [String]$Party_Number
     )
     process {
