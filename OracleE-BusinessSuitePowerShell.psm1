@@ -1,4 +1,6 @@
-﻿function New-EBSPowershellConfiguration {
+﻿$ModulePath = (Get-Module -ListAvailable OracleE-BusinessSuitePowerShell).ModuleBase
+
+function New-EBSPowershellConfiguration {
     param (
         [Parameter(Mandatory,ParameterSetName="DatabaseConnectionString")][String]$DatabaseConnectionString,
         [Parameter(Mandatory,ParameterSetName="NoDatabaseConnectionString")][string]$Host,
@@ -259,11 +261,14 @@ function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName]
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]
         [String]$Party_ID,
 
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName]
-        [String]$Party_Number
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]
+        [String]$Party_Number,
+
+        [String]$PERSON_FIRST_NAME,
+        [String]$PERSON_LAST_NAME
     )
     process {
         $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName hz_parties
@@ -436,6 +441,58 @@ from
 hz_cust_site_uses_all
 where rownum <= 10
 "@
+}
+
+function Find-CustomerAccountNumber {
+    param (
+        $Email_Address,
+        $Phone_Area_Code,
+        $Phone_Number,
+        $Address1,
+        $Postal_Code,
+        $State,
+        $Person_First_Name,
+        $Person_Last_Name,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Customer Account Number.sql"
+
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -BindVariableNames (
+@"
+Email_Address
+Phone_Area_Code
+Phone_Number
+Address1
+Postal_Code
+State
+Person_First_Name
+Person_Last_Name
+"@ -split "`r`n"
+    ) -Parameters ($PSBoundParameters | ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration)
+
+    $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+    Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration |
+    Select-Object -ExpandProperty Account_Number
+}
+
+function Invoke-SubstituteOracleBindVariable {
+    param (
+        $BindVariableNames,
+        $Parameters,
+        $Content
+    )
+    foreach ($BindVariableName in $BindVariableNames) {
+        $ParameterValue = $Parameters[$BindVariableName]
+        $ValueFormatted = if ($ParameterValue) { 
+            "'$ParameterValue'"
+        } else {
+            "NULL" 
+        }
+
+        $Content = $Content.replace(":$BindVariableName", $ValueFormatted)
+    }
+    $Content
 }
 
 function Get-EBSRelationshipFromEmail {
