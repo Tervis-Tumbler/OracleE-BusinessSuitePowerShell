@@ -51,24 +51,47 @@ AND TableName.Thing2 = 'Value2'
 }
 
 Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
+    $BadPhoneAreaCode = "000"
+    $BadPhoneNumber = "555-0000"
+    $BadEmailAddress = "org@0000.com"
+
     Context "Search via Phone Number and Email Address" {
+        $OrganizationPhoneAreaCode = "941"
+        $OrganizationPhoneNumber = "555-1111"
+        $OrganizationEmailAddress = "org@25496989.com"
+
         It "Organization > Communication > Phone Number" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code 941 -Phone_Number 555-1111
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber
             $AccountNumber | Should -Be 25496989
         }
 
         It "Organization > Communication > Phone Number that doesn't exist" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code 941 -Phone_Number 555-0000
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $BadPhoneAreaCode -Phone_Number $BadPhoneNumber
             $AccountNumber | Should -BeNullOrEmpty
         }
         
         It "Organization > Communication > Email Address" {
-            $AccountNumber = Find-CustomerAccountNumber -Email_Address "org@25496989.com"
+            $AccountNumber = Find-CustomerAccountNumber -Email_Address $OrganizationEmailAddress
             $AccountNumber | Should -Be 25496989
         }
 
         It "Organization > Communication > Email Address that doesn't exist" {
-            $AccountNumber = Find-CustomerAccountNumber -Email_Address "org@0000.com"
+            $AccountNumber = Find-CustomerAccountNumber -Email_Address $BadEmailAddress
+            $AccountNumber | Should -BeNullOrEmpty
+        }
+
+        It "Organization > Communication > Phone number and Email Address" {
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber -Email_Address $OrganizationEmailAddress
+            $AccountNumber | Should -Be 25496989
+        }
+
+        It "Organization > Communication > Phone number doesn't exist but Email Address does" {
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $BadPhoneAreaCode -Phone_Number $BadPhoneNumber -Email_Address $OrganizationEmailAddress
+            $AccountNumber | Should -BeNullOrEmpty
+        }
+
+        It "Organization > Communication > Phone number but Email Address doesn't exist" {
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber -Email_Address $BadEmailAddress
             $AccountNumber | Should -BeNullOrEmpty
         }
 
