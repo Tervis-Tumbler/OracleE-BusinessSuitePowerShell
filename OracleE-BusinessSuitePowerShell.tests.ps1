@@ -50,18 +50,19 @@ AND TableName.Thing2 = 'Value2'
     }
 }
 
-Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
-    $BadPhoneAreaCode = "000"
-    $BadPhoneNumber = "555-0000"
-    $BadEmailAddress = "org@0000.com"
+function New-FindCustomerAccountNumberTestSuite {
 
     Context "Search via Phone Number and Email Address" {
-        $OrganizationPhoneAreaCode = "941"
-        $OrganizationPhoneNumber = "555-1111"
-        $OrganizationEmailAddress = "org@25496989.com"
+        $BadPhoneAreaCode = "000"
+        $BadPhoneNumber = "555-0000"
+        $BadEmailAddress = "org@0000.com"
+        
+        $PhoneAreaCode = "941"
+        $PhoneNumber = "555-1111"
+        $EmailAddress = "org@25496989.com"
 
         It "Organization > Communication > Phone Number" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber
             $AccountNumber | Should -Be 25496989
         }
 
@@ -71,7 +72,7 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
         }
         
         It "Organization > Communication > Email Address" {
-            $AccountNumber = Find-CustomerAccountNumber -Email_Address $OrganizationEmailAddress
+            $AccountNumber = Find-CustomerAccountNumber -Email_Address $EmailAddress
             $AccountNumber | Should -Be 25496989
         }
 
@@ -81,17 +82,17 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
         }
 
         It "Organization > Communication > Phone number and Email Address" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber -Email_Address $OrganizationEmailAddress
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber -Email_Address $EmailAddress
             $AccountNumber | Should -Be 25496989
         }
 
         It "Organization > Communication > Phone number doesn't exist but Email Address does" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $BadPhoneAreaCode -Phone_Number $BadPhoneNumber -Email_Address $OrganizationEmailAddress
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $BadPhoneAreaCode -Phone_Number $BadPhoneNumber -Email_Address $EmailAddress
             $AccountNumber | Should -BeNullOrEmpty
         }
 
         It "Organization > Communication > Phone number but Email Address doesn't exist" {
-            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $OrganizationPhoneAreaCode -Phone_Number $OrganizationPhoneNumber -Email_Address $BadEmailAddress
+            $AccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber -Email_Address $BadEmailAddress
             $AccountNumber | Should -BeNullOrEmpty
         }
 
@@ -111,6 +112,13 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
 
         }
     }
+}
+
+Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
+
+    New-FindCustomerAccountNumberTestSuite
+
+        
 
     Context "Search via Address1, Postal_Code, City" {
         It "Organization > Account > Communication > Contact > Contact Addresses > Location" {
@@ -136,3 +144,4 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
         }
     }
 }
+
