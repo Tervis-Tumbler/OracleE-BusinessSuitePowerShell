@@ -50,7 +50,7 @@ AND TableName.Thing2 = 'Value2'
     }
 }
 
-function New-FindCustomerAccountNumberTestSet {
+function New-FindCustomerAccountNumberByEmailAndPhoneNumberTestSet {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$SearchLevel,
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$PhoneAreaCode,
@@ -60,10 +60,6 @@ function New-FindCustomerAccountNumberTestSet {
     )
     process {
         Context "$SearchLevel Search via Phone Number and Email Address" {
-            $BadPhoneAreaCode = "000"
-            $BadPhoneNumber = "555-0000"
-            $BadEmailAddress = "org@0000.com"
-
             It "$SearchLevel > Phone Number" {
                 $CustomerAccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber
                 $CustomerAccountNumber | Should -Be $AccountNumber
@@ -82,9 +78,49 @@ function New-FindCustomerAccountNumberTestSet {
     }
 }
 
+function New-FindCustomerAccountNumberByLocationTestSet {
+    param (
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$SearchLevel,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Address1,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$Postal_Code,
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$State,
+        [Parameter(ValueFromPipelineByPropertyName)]$AccountNumber
+    )
+    process {
+        $ParameterHashTable = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty SearchLevel,AccountNumber -AsHashTable
+        $Parameters = $ParameterHashTable | Split-HashTable
+        Context "$SearchLevel Search via Address1, Postal_Code, and State" {
+            New-ItCondition -SearchLevel $SearchLevel -AccountNumber $AccountNumber @ParameterHashTable
+
+            foreach ($Parameter in $Parameters ) {
+                New-ItCondition -SearchLevel $SearchLevel -AccountNumber $AccountNumber @Parameter
+            }
+        }
+    }
+}
+
+function New-ItCondition {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName)]$SearchLevel,
+        [Parameter(ValueFromPipelineByPropertyName)]$Address1,
+        [Parameter(ValueFromPipelineByPropertyName)]$Postal_Code,
+        [Parameter(ValueFromPipelineByPropertyName)]$State,
+        [Parameter(ValueFromPipelineByPropertyName)]$AccountNumber
+    )
+    begin {
+        $ParameterHashTable = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty SearchLevel,AccountNumber -AsHashTable
+    }
+    process {
+        It "$SearchLevel > $($ParameterHashTable.Keys -join ", ")" {
+            $CustomerAccountNumber = Find-CustomerAccountNumber @ParameterHashTable
+            $CustomerAccountNumber | Should -Be $AccountNumber
+        }
+    }
+}
+
 Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
 
-    $TestScenarios = @{
+    $EmailAndPhoneNumberTestScenarios = @{
         SearchLevel = "Organization > Communication"
         PhoneAreaCode = "941"
         PhoneNumber = "555-1111"
@@ -127,24 +163,37 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
         AccountNumber = $null
     }
 
-    foreach ($TestScenario in $TestScenarios) {
-        New-FindCustomerAccountNumberTestSet @TestScenario
+    foreach ($TestScenario in $EmailAndPhoneNumberTestScenarios) {
+        New-FindCustomerAccountNumberByEmailAndPhoneNumberTestSet @TestScenario
+    }
+}
+Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber Location" {
+    $LocationTestScenarios = @{
+        SearchLevel = "Organization > Account > Communication > Contact > Contact Addresses > Location"
+        Address1 = "Org > Acct > Com > Contact Address1"
+        Postal_Code = "99996"
+        State = "AP"
+        AccountNumber = 25496989
+    },
+    @{
+        SearchLevel = "Organization > Account > Site > Communication > Contact > Colntact Addresses > Location"
+        Address1 = "Organization > Account > Site > Communication > Contact First_Name Address1"
+        Postal_Code = "99997"
+        State = "AE"
+        AccountNumber = 25496989
+    },
+    @{
+        SearchLevel = "Organization > Account > Site > Location"
+        Address1 = "Organization Site Address1"
+        Postal_Code = "99998"
+        State = "AA"
+        AccountNumber = 25496989
+    }
+
+    foreach ($TestScenario in $LocationTestScenarios) {
+        New-FindCustomerAccountNumberByLocationTestSet @TestScenario
     }
     
-    Context "Search via Address1, Postal_Code, City" {
-        It "Organization > Account > Communication > Contact > Contact Addresses > Location" {
-
-        }
-
-        It "Organization > Account > Site > Communication > Contact > Colntact Addresses > Location" {
-
-        }
-
-        It "Organization > Account > Site > Location" {
-
-        }
-    }
-
     Context "Search via Person_First_Name, Person_Last_Name" {
         It "Organization > Account > Communication > Contact" {
 
