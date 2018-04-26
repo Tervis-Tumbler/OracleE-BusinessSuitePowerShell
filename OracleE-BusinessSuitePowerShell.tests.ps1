@@ -50,6 +50,35 @@ AND TableName.Thing2 = 'Value2'
     }
 }
 
+#https://stackoverflow.com/questions/28331257/unique-combos-from-powershell-array-no-duplicate-combos?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+function Get-Subsets ($a){
+    #uncomment following to ensure only unique inputs are parsed
+    #e.g. 'B','C','D','E','E' would become 'B','C','D','E'
+    #$a = $a | Select-Object -Unique
+    #create an array to store output
+    $l = @()
+    #for any set of length n the maximum number of subsets is 2^n
+    for ($i = 0; $i -lt [Math]::Pow(2,$a.Length); $i++)
+    { 
+        #temporary array to hold output
+        [string[]]$out = New-Object string[] $a.length
+        #iterate through each element
+        for ($j = 0; $j -lt $a.Length; $j++)
+        { 
+            #start at the end of the array take elements, work your way towards the front
+            if (($i -band (1 -shl ($a.Length - $j - 1))) -ne 0)
+            {
+                #store the subset in a temp array
+                $out[$j] = $a[$j]
+            }
+        }
+        #stick subset into an array
+        $l += -join $out
+    }
+    #group the subsets by length, iterate through them and sort
+    $l | Group-Object -Property Length | %{$_.Group | sort}
+}
+
 function New-FindCustomerAccountNumberByEmailAndPhoneNumberTestSet {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$SearchLevel,
