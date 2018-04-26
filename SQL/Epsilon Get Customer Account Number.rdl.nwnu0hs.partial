@@ -3,7 +3,7 @@
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
     <DataSource Name="EBSODBEE">
-      <DataSourceReference>/Data Sources/EBS</DataSourceReference>
+      <DataSourceReference>/Data Sources/EBSODBEE.Epsilon.Tervis.prv</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>e6d1e7c7-b7cb-4043-ba19-c33f4ad6fd48</rd:DataSourceID>
     </DataSource>
