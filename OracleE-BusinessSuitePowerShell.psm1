@@ -394,11 +394,9 @@ function Get-EBSTradingCommunityArchitectureContactPoint {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         [Parameter(Mandatory,ParameterSetName="EmailAddress")]$EmailAddress,
         
-        [ValidatePattern("\d{3}")]
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
         $Phone_Area_Code,
         
-        [ValidatePattern("\d{3}-\d{4}")]
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
         $Phone_Number,
         
