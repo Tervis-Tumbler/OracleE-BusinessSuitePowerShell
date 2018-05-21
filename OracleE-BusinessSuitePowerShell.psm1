@@ -616,3 +616,37 @@ function EBSTradingCommunityArchitectureOrganizationLogicalObject {
 
     $OrganizationObject | Select-Object -Property 
 }
+
+function Get-EBSMaterialItem{
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Parameter(ValueFromPipelineByPropertyName)][String]$Inventory_Item_ID,
+        [Parameter(ValueFromPipelineByPropertyName)][Int]$Organization_ID
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName MTL_SYSTEM_ITEMS_B
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSMaterialCrossReference{
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [String]$Cross_Reference,
+        [Int]$Organization_ID
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName MTL_CROSS_REFERENCES_B
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Find-EBSItem{
+    param (
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [String]$Cross_Reference,
+        [Int]$Organization_ID
+    )
+    Get-EBSMaterialCrossReference -Cross_Reference $Cross_Reference |
+    Get-EBSMaterialItem -Organization_ID $Organization_ID
+}
