@@ -441,7 +441,7 @@ where rownum <= 10
 "@
 }
 
-function Find-CustomerAccountNumber {
+function Find-EBSCustomerAccountNumber {
     param (
         $Email_Address,
         $Phone_Area_Code,

@@ -90,17 +90,17 @@ function New-FindCustomerAccountNumberByEmailAndPhoneNumberTestSet {
     process {
         Context "$SearchLevel Search via Phone Number and Email Address" {
             It "$SearchLevel > Phone Number" {
-                $CustomerAccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber
+                $CustomerAccountNumber = Find-EBSCustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber
                 $CustomerAccountNumber | Should -Be $AccountNumber
             }
 
             It "$SearchLevel > Email Address" {
-                $CustomerAccountNumber = Find-CustomerAccountNumber -Email_Address $EmailAddress
+                $CustomerAccountNumber = Find-EBSCustomerAccountNumber -Email_Address $EmailAddress
                 $CustomerAccountNumber | Should -Be $AccountNumber
             }
 
             It "$SearchLevel > Phone number and Email Address" {
-                $CustomerAccountNumber = Find-CustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber -Email_Address $EmailAddress
+                $CustomerAccountNumber = Find-EBSCustomerAccountNumber -Phone_Area_Code $PhoneAreaCode -Phone_Number $PhoneNumber -Email_Address $EmailAddress
                 $CustomerAccountNumber | Should -Be $AccountNumber
             }
         }
@@ -141,13 +141,13 @@ function New-ItCondition {
     }
     process {
         It "$SearchLevel > $($ParameterHashTable.Keys -join ", ")" {
-            $CustomerAccountNumber = Find-CustomerAccountNumber @ParameterHashTable
+            $CustomerAccountNumber = Find-EBSCustomerAccountNumber @ParameterHashTable
             $CustomerAccountNumber | Should -Be $AccountNumber
         }
     }
 }
 
-Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
+Describe "OracleE-BusinessSuitePowerShell Find-EBSCustomerAccountNumber" {
 
     $EmailAndPhoneNumberTestScenarios = @{
         SearchLevel = "Organization > Communication"
@@ -196,7 +196,7 @@ Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber" {
         New-FindCustomerAccountNumberByEmailAndPhoneNumberTestSet @TestScenario
     }
 }
-Describe "OracleE-BusinessSuitePowerShell Find-CustomerAccountNumber Location" {
+Describe "OracleE-BusinessSuitePowerShell Find-EBSCustomerAccountNumber Location" {
     $LocationTestScenarios = @{
         SearchLevel = "Organization > Account > Communication > Contact > Contact Addresses > Location"
         Address1 = "Org > Acct > Com > Contact Address1"
