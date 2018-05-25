@@ -3,7 +3,7 @@ FilteredContactPoints AS (
     SELECT *
     FROM hz_contact_points ContactPoints
     WHERE (
-        UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
+        UPPER(ContactPoints.email_address) = :Email_Address
         AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
         AND ContactPoints.Phone_Number = :Phone_Number
     ) OR (
@@ -11,7 +11,7 @@ FilteredContactPoints AS (
         AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
         AND ContactPoints.Phone_Number = :Phone_Number
     ) OR (
-        UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
+        UPPER(ContactPoints.email_address) = :Email_Address
         AND :Phone_Area_Code IS NULL
         AND ContactPoints.Phone_Number = :Phone_Number
     ) OR (
@@ -19,7 +19,7 @@ FilteredContactPoints AS (
         AND :Phone_Area_Code IS NULL
         AND ContactPoints.Phone_Number = :Phone_Number
     ) OR (
-        UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
+        UPPER(ContactPoints.email_address) = :Email_Address
         AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
         AND :Phone_Number IS NULL
     ) OR (
@@ -27,7 +27,7 @@ FilteredContactPoints AS (
         AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
         AND :Phone_Number IS NULL
     ) OR (
-        UPPER(ContactPoints.email_address) = UPPER(:Email_Address)
+        UPPER(ContactPoints.email_address) = :Email_Address
         AND :Phone_Area_Code IS NULL
         AND :Phone_Number IS NULL
     )
