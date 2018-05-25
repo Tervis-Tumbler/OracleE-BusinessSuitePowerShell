@@ -455,19 +455,14 @@ function Find-EBSCustomerAccountNumber {
     )
 
     $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Customer Account Number.sql"
+    
+    $Parameters = $PSBoundParameters |
+    ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration, Email_Address -Property @{
+        Name = "Email_Address"
+        Expression = {$_.Email_Address.ToUpper()}
+    }
 
-    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -BindVariableNames (
-@"
-Email_Address
-Phone_Area_Code
-Phone_Number
-Address1
-Postal_Code
-State
-Person_First_Name
-Person_Last_Name
-"@ -split "`r`n"
-    ) -Parameters ($PSBoundParameters | ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration)
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
 
     $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
     Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration |
@@ -476,19 +471,26 @@ Person_Last_Name
 
 function Invoke-SubstituteOracleBindVariable {
     param (
-        $BindVariableNames,
         $Parameters,
         $Content
     )
-    foreach ($BindVariableName in $BindVariableNames) {
+    foreach ($BindVariableName in $Parameters.Keys) {
         $ParameterValue = $Parameters[$BindVariableName]
-        $ValueFormatted = if ($ParameterValue) { 
-            "'$ParameterValue'"
-        } else {
-            "NULL" 
-        }
 
-        $Content = $Content.replace(":$BindVariableName", $ValueFormatted)
+        if ($ParameterValue.count -gt 1) {
+            $ValueFormatted = $ParameterValue | ForEach-Object { 
+                "'$ParameterValue'"
+            }
+            $ValueFormatted = "($($ValueFormatted -join ","))"
+            $Content = $Content.replace("= :$BindVariableName", "in $ValueFormatted")
+        } else {
+            $ValueFormatted = if ($ParameterValue) { 
+                "'$ParameterValue'"
+            } else {
+                "NULL" 
+            }
+            $Content = $Content.replace(":$BindVariableName", $ValueFormatted)
+        }
     }
     $Content
 }
