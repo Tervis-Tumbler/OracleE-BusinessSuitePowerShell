@@ -163,7 +163,7 @@ function Remove-EBSSQLPropertiesWeDontCareAbout {
 
 function Get-EBSUserNameAndResponsibility {
     param (
-        [Parameter(Mandatory)]$EBSEnvironmentConfiguration
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand @"
 select distinct usr.user_name
