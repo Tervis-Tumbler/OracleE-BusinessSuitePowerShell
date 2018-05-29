@@ -455,9 +455,10 @@ function Find-EBSCustomerAccountNumber {
     )
 
     $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Customer Account Number.sql"
-    
-    $Parameters = $PSBoundParameters |
-    ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration, Email_Address -Property @{
+    $Parameters = $PSBoundParameters
+
+    $Parameters = $Parameters |
+    ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration, Email_Address -Property *,@{
         Name = "Email_Address"
         Expression = {$_.Email_Address.ToUpper()}
     }
@@ -474,7 +475,14 @@ function Invoke-SubstituteOracleBindVariable {
         $Parameters,
         $Content
     )
-    foreach ($BindVariableName in $Parameters.Keys) {
+    [Regex]$Regex = "(?::)(?<BindVariableName>\w+)"
+    
+    $BindVariableNames = $Regex.Matches($Content).Groups |
+    Where-Object Name -eq BindVariableName |
+    Select-Object -ExpandProperty Value |
+    Sort-Object -Unique
+
+    foreach ($BindVariableName in $BindVariableNames) {
         $ParameterValue = $Parameters[$BindVariableName]
 
         if ($ParameterValue.count -gt 1) {
