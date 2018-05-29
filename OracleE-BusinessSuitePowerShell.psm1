@@ -487,15 +487,16 @@ function Invoke-SubstituteOracleBindVariable {
 
         if ($ParameterValue.count -gt 1) {
             $ValueFormatted = $ParameterValue | ForEach-Object { 
-                "'$ParameterValue'"
+                "'$_'"
             }
             $ValueFormatted = "($($ValueFormatted -join ","))"
             $Content = $Content.replace("= :$BindVariableName", "in $ValueFormatted")
+            $Content = $Content.replace(":$BindVariableName IS NULL", "NOT NULL IS NULL")
         } else {
             $ValueFormatted = if ($ParameterValue) { 
                 "'$ParameterValue'"
             } else {
-                "NULL" 
+                "NULL"
             }
             $Content = $Content.replace(":$BindVariableName", $ValueFormatted)
         }
