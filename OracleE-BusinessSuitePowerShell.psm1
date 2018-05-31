@@ -100,9 +100,14 @@ function Invoke-EBSSQL {
         [Parameter(Mandatory)][String]$SQLCommand,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
-    Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
-    Remove-PSObjectEmptyOrNullProperty |
-    Remove-EBSSQLPropertiesWeDontCareAbout
+    if ($EBSEnvironmentConfiguration) {
+        Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
+        Remove-PSObjectEmptyOrNullProperty |
+        Remove-EBSSQLPropertiesWeDontCareAbout
+    } else {
+        Throw "Invoke-EBSSQL EBSEnvironmentConfiguration not set"
+    }
+
 }
 
 $Script:ColumnNameCache = @{}
@@ -123,7 +128,10 @@ AND TABLE_NAME = '$($TableName.ToUpper())'
 order by COLUMN_NAME
 "@ | 
         Select-Object -ExpandProperty COLUMN_NAME
-        $Script:ColumnNameCache.Add($TableName, $ColumnNames)
+        
+        if ($ColumnNames) {
+            $Script:ColumnNameCache.Add($TableName, $ColumnNames)
+        }
     }
     $ColumnNames
 }
@@ -261,10 +269,10 @@ function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
         
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]
+        [Parameter(ValueFromPipelineByPropertyName)]
         [String]$Party_ID,
 
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]
+        [Parameter(ValueFromPipelineByPropertyName)]
         [String]$Party_Number,
 
         [String]$PERSON_FIRST_NAME,
