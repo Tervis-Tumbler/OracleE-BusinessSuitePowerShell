@@ -409,7 +409,7 @@ function Get-EBSTradingCommunityArchitectureContactPoint {
         $Phone_Number,
 
         [Parameter(Mandatory,ParameterSetName="RAWPhoneNumber")]
-        $Phone_Number,
+        $Raw_Phone_Number,
         
         [Parameter(Mandatory,ParameterSetName="owner_table_id")]
         $owner_table_id
@@ -466,16 +466,12 @@ function Find-EBSCustomerAccountNumber {
 
     $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Customer Account Number.sql"
     $Parameters = $PSBoundParameters
-
-    $Parameters = $Parameters |
-    ConvertFrom-PSBoundParameters -ExcludeProperty EBSEnvironmentConfiguration, Email_Address
     
     if ($Email_Address) {
-        $Parameters |
-        Add-Member -MemberType NoteProperty -Name Email_Address -Value $Email_Address.ToUpper()
+        $Parameters.Remove("Email_Address")
+        $Parameters.add("Email_Address", $Email_Address.ToUpper())
     }
-   
-    $Parameters = $Parameters | ConvertTo-HashTable
+
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
 
     $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
