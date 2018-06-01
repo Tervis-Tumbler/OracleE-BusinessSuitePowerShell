@@ -4,32 +4,14 @@ FilteredContactPoints AS (
     FROM hz_contact_points ContactPoints
     WHERE (
         UPPER(ContactPoints.email_address) = :Email_Address
-        AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
-        AND ContactPoints.Phone_Number = :Phone_Number
+        AND ContactPoints.Raw_Phone_Number = :Raw_Phone_Number
     ) OR (
         :Email_Address IS NULL
-        AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
-        AND ContactPoints.Phone_Number = :Phone_Number
+        AND ContactPoints.Raw_Phone_Number = :Raw_Phone_Number
     ) OR (
         UPPER(ContactPoints.email_address) = :Email_Address
-        AND :Phone_Area_Code IS NULL
-        AND ContactPoints.Phone_Number = :Phone_Number
-    ) OR (
-        :Email_Address IS NULL
-        AND :Phone_Area_Code IS NULL
-        AND ContactPoints.Phone_Number = :Phone_Number
-    ) OR (
-        UPPER(ContactPoints.email_address) = :Email_Address
-        AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
-        AND :Phone_Number IS NULL
-    ) OR (
-        :Email_Address IS NULL
-        AND ContactPoints.Phone_Area_Code = :Phone_Area_Code
-        AND :Phone_Number IS NULL
-    ) OR (
-        UPPER(ContactPoints.email_address) = :Email_Address
-        AND :Phone_Area_Code IS NULL
-        AND :Phone_Number IS NULL
+        AND :Raw_Phone_Number IS NULL
+        
     )
 ),
 FilteredLocations AS (
@@ -211,8 +193,7 @@ UNION
         FROM AccountNumberPersonName
     ) OR (
         :Email_Address IS NULL
-        AND :Phone_Area_Code IS NULL
-        AND :Phone_Number IS NULL
+        AND :Raw_Phone_Number IS NULL
         AND :Person_First_Name IS NULL
         AND :Person_Last_Name IS NULL
     )
@@ -228,8 +209,7 @@ UNION
         FROM AccountNumberFromLocations
     ) OR (
         :Email_Address IS NULL
-        AND :Phone_Area_Code IS NULL
-        AND :Phone_Number IS NULL
+        AND :Raw_Phone_Number IS NULL
         AND :Address1 IS NULL
         AND :Postal_Code IS NULL
         AND :State IS NULL

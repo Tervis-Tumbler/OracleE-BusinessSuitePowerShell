@@ -407,6 +407,9 @@ function Get-EBSTradingCommunityArchitectureContactPoint {
         
         [Parameter(Mandatory,ParameterSetName="PhoneNumber")]
         $Phone_Number,
+
+        [Parameter(Mandatory,ParameterSetName="RAWPhoneNumber")]
+        $Phone_Number,
         
         [Parameter(Mandatory,ParameterSetName="owner_table_id")]
         $owner_table_id
@@ -452,8 +455,7 @@ where rownum <= 10
 function Find-EBSCustomerAccountNumber {
     param (
         $Email_Address,
-        $Phone_Area_Code,
-        $Phone_Number,
+        $Raw_Phone_Number,
         $Address1,
         $Postal_Code,
         $State,
