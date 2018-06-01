@@ -101,7 +101,7 @@ function Invoke-EBSSQL {
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
     if ($EBSEnvironmentConfiguration) {
-        Invoke-SQLGeneric -DatabaseEngineClassMapName Oracle -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
+        Invoke-OracleSQL -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
         Remove-PSObjectEmptyOrNullProperty |
         Remove-EBSSQLPropertiesWeDontCareAbout
     } else {
@@ -466,11 +466,14 @@ function Find-EBSCustomerAccountNumber {
     $Parameters = $PSBoundParameters
 
     $Parameters = $Parameters |
-    ConvertFrom-PSBoundParameters -AsHashTable -ExcludeProperty EBSEnvironmentConfiguration, Email_Address -Property *,@{
-        Name = "Email_Address"
-        Expression = {$_.Email_Address.ToUpper()}
+    ConvertFrom-PSBoundParameters -ExcludeProperty EBSEnvironmentConfiguration, Email_Address
+    
+    if ($Email_Address) {
+        $Parameters |
+        Add-Member -MemberType NoteProperty -Name Email_Address -Value $Email_Address.ToUpper()
     }
-
+   
+    $Parameters = $Parameters | ConvertTo-HashTable
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
 
     $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
