@@ -51,14 +51,14 @@ FilteredParties AS (
     SELECT * 
     FROM apps.hz_parties Parties
     WHERE (
-        Parties.PERSON_FIRST_NAME = :Person_First_Name
-        AND Parties.PERSON_LAST_NAME = :Person_Last_Name
+        Upper(Parties.PERSON_LAST_NAME) = :Person_Last_Name
+        AND Upper(Parties.PARTY_NAME) = :Party_Name
+    ) OR (        
+        Upper(Parties.PERSON_LAST_NAME) = :Person_Last_Name
+        AND :Party_Name IS NULL
     ) OR (
-        :Person_First_Name IS NULL
-        AND Parties.PERSON_LAST_NAME = :Person_Last_Name        
-    ) OR (
-        Parties.PERSON_FIRST_NAME = :Person_First_Name
-        AND :Person_Last_Name IS NULL
+        :Person_Last_Name IS NULL
+        AND Upper(Parties.PARTY_NAME) = :Party_Name
     )
 ),
 OrganizationParty AS (
@@ -168,50 +168,65 @@ AccountNumberPersonName AS (
     SELECT *
     FROM  
     AcctNumFromContactPoint
-    WHERE Account_Number in (
-        Select Account_Number
-        FROM AccountNumberFromLocations
-        UNION
-        Select Account_Number
-        FROM AccountNumberPersonName
-    ) OR (
-        :Address1 IS NULL
-        AND :Postal_Code IS NULL
-        AND :State IS NULL
-        AND :Person_First_Name IS NULL
-        AND :Person_Last_Name IS NULL
+    WHERE (
+        Account_Number in (
+            Select Account_Number
+            FROM AccountNumberFromLocations
+        ) OR (
+            :Address1 IS NULL
+            AND :Postal_Code IS NULL
+            AND :State IS NULL
+        )
+    ) AND (
+        Account_Number in (
+            Select Account_Number
+            FROM AccountNumberPersonName
+        ) OR (
+            :Person_Last_Name IS NULL
+            AND :Party_Name IS NULL
+        )
     )
 UNION
     SELECT *
     FROM 
     AccountNumberFromLocations
-    WHERE Account_Number in (
-        Select Account_Number
-        FROM AcctNumFromContactPoint
-        UNION
-        Select Account_Number
-        FROM AccountNumberPersonName
-    ) OR (
-        :Email_Address IS NULL
-        AND :Transposed_Phone_Number IS NULL
-        AND :Person_First_Name IS NULL
-        AND :Person_Last_Name IS NULL
+    WHERE (
+        Account_Number in (
+            Select Account_Number
+            FROM AcctNumFromContactPoint
+        ) OR (
+            :Email_Address IS NULL
+            AND :Transposed_Phone_Number IS NULL
+        )
+    ) AND (
+        Account_Number in (
+            Select Account_Number
+            FROM AccountNumberPersonName
+        ) OR (
+            :Person_Last_Name IS NULL
+            AND :Party_Name IS NULL
+        )
     )
 UNION
     SELECT *
     FROM
     AccountNumberPersonName
-    WHERE Account_Number in (
-        Select Account_Number
-        FROM AcctNumFromContactPoint
-        UNION
-        Select Account_Number
-        FROM AccountNumberFromLocations
-    ) OR (
-        :Email_Address IS NULL
-        AND :Transposed_Phone_Number IS NULL
-        AND :Address1 IS NULL
-        AND :Postal_Code IS NULL
-        AND :State IS NULL
+    WHERE (
+        Account_Number in (
+            Select Account_Number
+            FROM AcctNumFromContactPoint
+        ) OR (
+            :Email_Address IS NULL
+            AND :Transposed_Phone_Number IS NULL
+        )
+    ) AND (
+        Account_Number in (
+            Select Account_Number
+            FROM AccountNumberFromLocations
+        ) OR (
+            :Address1 IS NULL
+            AND :Postal_Code IS NULL
+            AND :State IS NULL
+        )
     )
 ;
