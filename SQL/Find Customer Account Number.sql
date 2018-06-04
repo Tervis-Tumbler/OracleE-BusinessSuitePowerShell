@@ -4,13 +4,13 @@ FilteredContactPoints AS (
     FROM hz_contact_points ContactPoints
     WHERE (
         UPPER(ContactPoints.email_address) = :Email_Address
-        AND ContactPoints.Raw_Phone_Number = :Raw_Phone_Number
+        AND ContactPoints.Transposed_Phone_Number = :Transposed_Phone_Number
     ) OR (
         :Email_Address IS NULL
-        AND ContactPoints.Raw_Phone_Number = :Raw_Phone_Number
+        AND ContactPoints.Transposed_Phone_Number = :Transposed_Phone_Number
     ) OR (
         UPPER(ContactPoints.email_address) = :Email_Address
-        AND :Raw_Phone_Number IS NULL
+        AND :Transposed_Phone_Number IS NULL
         
     )
 ),
@@ -193,7 +193,7 @@ UNION
         FROM AccountNumberPersonName
     ) OR (
         :Email_Address IS NULL
-        AND :Raw_Phone_Number IS NULL
+        AND :Transposed_Phone_Number IS NULL
         AND :Person_First_Name IS NULL
         AND :Person_Last_Name IS NULL
     )
@@ -209,7 +209,7 @@ UNION
         FROM AccountNumberFromLocations
     ) OR (
         :Email_Address IS NULL
-        AND :Raw_Phone_Number IS NULL
+        AND :Transposed_Phone_Number IS NULL
         AND :Address1 IS NULL
         AND :Postal_Code IS NULL
         AND :State IS NULL
