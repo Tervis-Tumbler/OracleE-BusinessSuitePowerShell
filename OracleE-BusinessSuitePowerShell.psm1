@@ -468,7 +468,7 @@ function Find-EBSCustomerAccountNumber {
     $Parameters = $PSBoundParameters
     
     if ($Email_Address) {
-        $Parameters.Remove("Email_Address")
+        $Parameters.Remove("Email_Address") | Out-Null
         $Parameters.add("Email_Address", $Email_Address.ToUpper())
     }
 
