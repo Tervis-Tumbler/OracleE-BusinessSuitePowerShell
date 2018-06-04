@@ -276,7 +276,9 @@ function Get-EBSTradingCommunityArchitectureParty {
         [String]$Party_Number,
 
         [String]$PERSON_FIRST_NAME,
-        [String]$PERSON_LAST_NAME
+        [String]$PERSON_LAST_NAME,
+
+        [String]$Party_Name
     )
     process {
         $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName hz_parties
@@ -458,9 +460,9 @@ function Find-EBSCustomerAccountNumber {
         $Transposed_Phone_Number,
         $Address1,
         $Postal_Code,
-        $State,
-        $Person_First_Name,
+        $State,        
         $Person_Last_Name,
+        $Party_Name,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
     )
 
@@ -468,8 +470,15 @@ function Find-EBSCustomerAccountNumber {
     $Parameters = $PSBoundParameters
     
     if ($Email_Address) {
-        $Parameters.Remove("Email_Address") | Out-Null
-        $Parameters.add("Email_Address", $Email_Address.ToUpper())
+        $Parameters["Email_Address"] = $Email_Address.ToUpper()
+    }
+    
+    if ($Party_Name) {
+        $Parameters["Party_Name"] = $Party_Name.ToUpper()
+    }
+
+    if ($Person_Last_Name) {
+        $Parameters["Person_Last_Name"] = $Person_Last_Name.ToUpper()
     }
 
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
