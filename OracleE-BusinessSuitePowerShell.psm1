@@ -463,7 +463,8 @@ function Find-EBSCustomerAccountNumber {
         $State,        
         $Person_Last_Name,
         $Party_Name,
-        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
     )
 
     $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Customer Account Number.sql"
@@ -483,9 +484,13 @@ function Find-EBSCustomerAccountNumber {
 
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
 
-    $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
-    Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration |
-    Select-Object -ExpandProperty Account_Number
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration |
+        Select-Object -ExpandProperty Account_Number    
+    }
 }
 
 function Invoke-SubstituteOracleBindVariable {
