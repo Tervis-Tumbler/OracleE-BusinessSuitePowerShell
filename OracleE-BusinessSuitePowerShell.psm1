@@ -1,4 +1,8 @@
-﻿$ModulePath = (Get-Module -ListAvailable OracleE-BusinessSuitePowerShell).ModuleBase
+﻿$ModulePath = if ($PSScriptRoot) {
+	$PSScriptRoot
+} else {
+	(Get-Module -ListAvailable OracleE-BusinessSuitePowerShell).ModuleBase
+}
 
 function New-EBSPowershellConfiguration {
     param (
