@@ -688,3 +688,19 @@ function Find-EBSItem{
     Get-EBSMaterialCrossReference -Cross_Reference $Cross_Reference |
     Get-EBSMaterialItem -Organization_ID $Organization_ID
 }
+
+function ConvertTo-OracleSQLArraysSplitByItemIncrement {
+    param(
+        [parameter(Mandatory, ValueFromPipeline)][PSCustomObject]$CSVObject,
+        [parameter(Mandatory)][String]$ColumnName,
+        [parameter()]$Increment = 1000
+    )
+
+    $ItemArray = $CSVObject | Select-Object -Property $ColumnName
+
+    For ($i=0; $i -LT $ItemArray.length; $i += $Increment) {
+        $Selection = $ItemArray | Select -First $Increment -Skip $i 
+        ConvertTo-SQLArrayFromCSV -CSVObject $Selection -CSVColumnName $ColumnName
+    
+    }
+}
