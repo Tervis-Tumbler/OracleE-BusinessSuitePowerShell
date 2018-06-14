@@ -704,3 +704,35 @@ function ConvertTo-OracleSQLArraysSplitByItemIncrement {
     
     }
 }
+
+function New-OracleSQLInQueryArray {
+    param (
+        [Parameter(Mandatory)]$ColumnName,
+        [Parameter(Mandatory)]$CSVPath
+    )
+    $CSVObject = Import-Csv -Path $CSVPath
+    $LookupSets = ConvertTo-OracleSQLArraysSplitByItemIncrement -ColumnName $ColumnName -CSVObject $CSVObject
+    
+    $Query = @"
+SELECT
+    item_number, organization_code
+FROM 
+    apps.xxtrvs_bt_items_stg
+WHERE
+    organization_code <> 'STO' AND item_number IN
+
+"@
+
+    for ($i = 0; $i -lt $LookupSets.Count -1; $i++) {
+        
+        $Query += @"
+    $($LookupSets[$i]) OR item_number IN
+
+"@
+    }
+
+    $Query += @"
+    $($LookupSets[$LookupSets.Count - 1])
+"@
+    $Query
+}
