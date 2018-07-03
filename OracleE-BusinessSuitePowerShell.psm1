@@ -257,18 +257,6 @@ select count (*) from (
 "@
 }
 
-function New-EBSSQLWhere {
-    param (
-        [Parameter(Mandatory,ValueFromPipeline)]$Parameters,
-        [Parameter(Mandatory)]$TableName
-    )
-
-    "where 1 = 1"
-    foreach ($Parameter in $Parameters) {
-        "AND $TableName.$($Parameter.Name) = '$($Parameter.Value.ToUpper())'"
-    }
-}
-
 function Get-EBSTradingCommunityArchitectureParty {
     param (
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
