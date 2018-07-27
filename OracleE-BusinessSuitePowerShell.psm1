@@ -17,6 +17,7 @@ function New-EBSPowershellConfiguration {
         $RootCredential,
         $ApplmgrCredential,
         $AppsCredential,
+        $SysCredential,
         $InternetApplicationServerComputerName
     )
     $Parameters = $PSBoundParameters
