@@ -725,3 +725,27 @@ WHERE
 "@
     $Query
 }
+
+function Get-EBSListID {
+    param (
+        [parameter(mandatory)][ValidateSet("PRL","PRO","DLT","SLT","CHARGES")]$ListType,
+        [parameter(mandatory)]$ListName,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Price List ID.sql"
+    $Parameters = $PSBoundParameters
+    
+    $Parameters["ListType"] = $ListType.ToUpper()
+    $Parameters["ListName"] = $ListName.ToUpper()
+
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
+
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration 
+    }
+}
