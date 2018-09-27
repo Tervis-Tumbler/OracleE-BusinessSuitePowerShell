@@ -734,11 +734,55 @@ function Get-EBSListID {
         [Switch]$ReturnQueryOnly
     )
 
-    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Find Price List ID.sql"
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Get-EBSListID.sql"
     $Parameters = $PSBoundParameters
     
     $Parameters["ListType"] = $ListType.ToUpper()
     $Parameters["ListName"] = $ListName.ToUpper()
+
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
+
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration 
+    }
+}
+
+function Get-EBSOrderTransactionTypeID {
+    param (
+        [parameter(mandatory)]$OrderTransactionType,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Get-OrderTransactionTypeID.sql"
+    $Parameters = $PSBoundParameters
+    $Parameters["OrderTransactionType"] = $OrderTransactionType.ToUpper()
+
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
+
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration 
+    }
+}
+
+
+
+function Get-CustomerClassLookupCode {
+    param (
+        [parameter(mandatory)]$CustomerClass,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Get-CustomerClassLookupCode.sql"
+    $Parameters = $PSBoundParameters
+    $Parameters["CustomerClass"] = $CustomerClass.ToUpper()
 
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
 
