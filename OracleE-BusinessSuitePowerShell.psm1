@@ -773,7 +773,7 @@ function Get-EBSOrderTransactionTypeID {
 
 
 
-function Get-CustomerClassLookupCode {
+function Get-EBSCustomerClassLookupCode {
     param (
         [parameter(mandatory)]$CustomerClass,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
