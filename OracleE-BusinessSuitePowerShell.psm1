@@ -750,6 +750,22 @@ function Get-EBSListID {
     }
 }
 
+function Get-EBSListHeadersAll {
+    param(
+    $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+
+    [Parameter(ValueFromPipelineByPropertyName)]
+    [String]$Name,
+
+    [Parameter(ValueFromPipelineByPropertyName)]
+    [String]$List_Type_Code
+)
+process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName qp_list_headers_all
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
 function Get-EBSOrderTransactionTypeID {
     param (
         [parameter(mandatory)]$OrderTransactionType,
@@ -785,6 +801,28 @@ function Get-EBSCustomerClassLookupCode {
     $Parameters["CustomerClass"] = $CustomerClass.ToUpper()
 
     $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $Parameters
+
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration 
+    }
+}
+
+function Get-EBSCustomerClassLookupCode {
+    param (
+        [parameter(mandatory)]$FirstName,
+        [parameter(mandatory)]$LastName,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Get-CustomerClassLookupCode.sql"
+    $Parameters = $PSBoundParameters
+    $SalesRepName = "$LastName, $FirstName".ToUpper()
+    
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $SalesRepName
 
     if ($ReturnQueryOnly) {
         $QueryTextWithBindVariablesSubstituted
