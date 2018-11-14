@@ -726,6 +726,25 @@ WHERE
     $Query
 }
 
+function Invoke-LocalSQLPlusQueryAsSysDBA{
+    param(
+        [parameter(Mandatory)]$Command,
+        [parameter(Mandatory)]$SSHSession
+    )
+    $Whoami = (Invoke-SSHCommand -SSHSession $SshSession -Command "whoami").output
+    If($Whoami -eq "oracle"){
+        $SQLPlusCommand = @"
+sqlplus "/ as sysdba" <<EOF
+$Command
+quit;
+EOF
+"@
+    }
+    else{
+        Write-Error "SSHSession not Oracle user" -Category InvalidOperation -ErrorAction Stop
+    }
+}
+
 function Get-EBSListID {
     param (
         [parameter(mandatory)][ValidateSet("PRL","PRO","DLT","SLT","CHARGES")]$ListType,
