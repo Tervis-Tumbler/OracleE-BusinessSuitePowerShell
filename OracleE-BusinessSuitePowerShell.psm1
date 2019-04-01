@@ -745,3 +745,879 @@ EOF
     }
 }
 
+function Get-EBSTradingCommunityArchitectureListHeaders {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Name,
+        [parameter(ValueFromPipelineByPropertyName)]$Description,
+        [parameter(ValueFromPipelineByPropertyName)]$list_type_code,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "qp_list_headers_all"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+
+function Get-EBSTradingCommunityArchitectureTransactionTypesTL {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Transaction_Type_ID,
+        [parameter(ValueFromPipelineByPropertyName)]$Name,
+        [parameter(ValueFromPipelineByPropertyName)]$Description,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "oe_transaction_types_tl"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSCustomerClassSalesRepName {
+    param (
+        [parameter(mandatory)]$FirstName,
+        [parameter(mandatory)]$LastName,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        [Switch]$ReturnQueryOnly
+    )
+
+    $OriginalQueryText = Get-Content "$Script:ModulePath\SQL\Get-CustomerClassLookupCode.sql"
+    $Parameters = $PSBoundParameters
+    $SalesRepName = "$LastName, $FirstName".ToUpper()
+    
+    $QueryTextWithBindVariablesSubstituted = Invoke-SubstituteOracleBindVariable -Content $OriginalQueryText -Parameters $SalesRepName
+
+    if ($ReturnQueryOnly) {
+        $QueryTextWithBindVariablesSubstituted
+    } else {
+        $SQLCommand = $QueryTextWithBindVariablesSubstituted -replace ";", "" | Out-String
+        Invoke-EBSSQL -SQLCommand $SQLCommand -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration 
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureARLookup {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Type,
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Code,
+        [parameter(ValueFromPipelineByPropertyName)]$Meaning,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "ar_lookups"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureSalesRep {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Name,
+        [parameter(ValueFromPipelineByPropertyName)]$SalesRep_ID,
+        [parameter(ValueFromPipelineByPropertyName)]$Resource_ID,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "JTF_RS_SALESREPS"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureFNDLookupValues {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Type,
+        [parameter(ValueFromPipelineByPropertyName)]$View_Application_ID,
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Code,
+        [parameter(ValueFromPipelineByPropertyName)]$Security_Group_ID,
+        [parameter(ValueFromPipelineByPropertyName)]$Meaning,
+        [parameter(ValueFromPipelineByPropertyName)]$Language,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "fnd_lookup_values"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Invoke-HZCustAccountV2PubCreateCustAccount{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$organization_name,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$account_name,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$p_account_number,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$customer_type,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$customer_class_code,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$fob_point,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$freight_term,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$sales_channel_code,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$price_list_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$ship_via,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$SHIP_SETS_INCLUDE_LINES_FLAG,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$attribute9,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    $SQLCommand = @"
+    DECLARE
+    l_cust_account_rec     HZ_CUST_ACCOUNT_V2PUB.CUST_ACCOUNT_REC_TYPE;
+    l_organization_rec     HZ_PARTY_V2PUB.ORGANIZATION_REC_TYPE;
+    l_customer_profile_rec HZ_CUSTOMER_PROFILE_V2PUB.CUSTOMER_PROFILE_REC_TYPE;
+    l_cust_profile_rec      hz_customer_profile_v2pub.customer_profile_rec_type;
+    BEGIN
+        l_organization_rec.organization_name := '$($organization_name)';
+        l_organization_rec.created_by_module := '$($created_by_module)';
+        l_cust_account_rec.account_name := '$($account_name)';
+        l_cust_account_rec.created_by_module := '$($created_by_module)';
+        l_cust_account_rec.account_number := '$($p_account_number)';
+        l_cust_account_rec.customer_type       :=  '$($customer_type)';
+        l_cust_account_rec.customer_class_code :=  '$($customer_class_code)';
+        l_cust_account_rec.fob_point           :=  '$($fob_point)';
+        l_cust_account_rec.freight_term        :=  '$($freight_term)';
+        l_cust_account_rec.sales_channel_code  :=  '$($sales_channel_code)';
+        l_cust_account_rec.price_list_id       :=  '$($price_list_id)';
+        l_cust_account_rec.ship_via            :=  '$($ship_via)';
+        l_cust_account_rec.SHIP_SETS_INCLUDE_LINES_FLAG := '$($SHIP_SETS_INCLUDE_LINES_FLAG)';
+        l_cust_account_rec.attribute9          :=  '$($attribute9)';
+            hz_cust_account_v2pub.create_cust_account(
+                p_init_msg_list          => Fnd_Api.g_true,
+                p_cust_account_rec       => l_cust_account_rec,
+                p_organization_rec       => l_organization_rec,
+                p_customer_profile_rec   => l_cust_profile_rec,
+                x_cust_account_id        => :x_cust_account_id,
+                x_account_number         => :x_account_number,
+                x_party_id               => :x_party_id,
+                x_party_number           => :x_party_number,
+                x_profile_id             => :x_cust_profile_id,
+                x_return_status          => :x_return_status,
+                x_msg_count              => :x_msg_count,
+                x_msg_data               => :x_msg_data);
+    END;
+"@
+    $OracleParameters = $(
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_cust_account_id"
+            OracleDBType = "INT32"
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_account_number"
+            OracleDBType = "VARCHAR2"
+            Size = 200
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_party_id"
+            OracleDBType = "INT32"
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_party_number"
+            OracleDBType = "VARCHAR2"
+            Size = 2000
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_cust_profile_id"
+            OracleDBType = "INT32"
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_return_status"
+            OracleDBType = "VARCHAR2"
+            Size = 2000
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_msg_count"
+            OracleDBType = "INT32"
+            Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = "x_msg_data"
+            OracleDBType = "VARCHAR2"
+            Size = 2000
+            Direction = "Output"
+        }))
+
+    Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+    $Output = [PSCustomObject]@{}
+    ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+            $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+    }
+    $Output
+}
+
+function Invoke-HZLocationV2PubCreateLocation{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$country,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$address1,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$address2,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$address3,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$city,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$postal_code,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$state,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$province,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+                p_location_rec  HZ_LOCATION_V2PUB.LOCATION_REC_TYPE;
+        BEGIN
+                p_location_rec.created_by_module := '$($created_by_module)';
+                p_location_rec.country := '$($country)';
+                p_location_rec.address1 := '$($address1)';
+                p_location_rec.address2 := '$($address2)';
+                p_location_rec.address3 := '$($address3)';
+                p_location_rec.city    := '$($city)';
+                p_location_rec.postal_code := '$($postal_code)';
+                p_location_rec.state := '$($state)';
+                p_location_rec.province := '$($province)';
+                hz_location_v2pub.create_location(
+                        p_init_msg_list     => 'T',
+                        p_location_rec      => p_location_rec,
+                        x_location_id       => :x_location_id,
+                        x_return_status     => :x_return_status,
+                        x_msg_count         => :x_msg_count,
+                        x_msg_data          => :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_location_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZPartySiteV2PubCreatePartySite{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$party_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$location_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$identifying_address_flag,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_party_site_rec    HZ_PARTY_SITE_V2PUB.PARTY_SITE_REC_TYPE;
+        BEGIN
+        p_party_site_rec.party_id := '$($party_id)';
+        p_party_site_rec.location_id := '$($location_id)';
+        p_party_site_rec.identifying_address_flag := '$($identifying_address_flag)';
+        p_party_site_rec.created_by_module := '$($created_by_module)';
+         hz_party_site_v2pub.create_party_site(
+          'T',
+          p_party_site_rec,
+          :x_party_site_id,
+          :x_party_site_number,
+          :x_return_status,
+          :x_msg_count,
+          :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_site_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_site_number"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZCustAccountSiteV2PubCreateCustAcctSite{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_acct_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$party_site_id,
+        [parameter(ValueFromPipelineByPropertyName)]$Language = "US",
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE`
+        p_cust_acct_site_rec    hz_cust_account_site_v2pub.cust_acct_site_rec_type;
+        org_id    NUMBER := 82;
+        BEGIN
+        p_cust_acct_site_rec.cust_account_id := '$($cust_acct_id)'; --lx_cust_acct_id;--12722; 
+        p_cust_acct_site_rec.party_site_id := '$($PARTY_SITE_ID)'; --l_bparty_site_id;--12164;
+        fnd_global.apps_initialize ( user_id      => 7614
+                                   ,resp_id      => 21623
+                                   ,resp_appl_id => 660);
+        mo_global.init ( 'AR' ) ;
+        mo_global.set_policy_context ('S', org_id ) ;
+        p_cust_acct_site_rec.org_id := org_id;
+        p_cust_acct_site_rec.created_by_module := '$($created_by_module)';
+        hz_cust_account_site_v2pub.create_cust_acct_site(
+            'T',
+            p_cust_acct_site_rec,
+            :x_cust_acct_site_id,
+            :x_return_status,
+            :x_msg_count,
+            :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_cust_acct_site_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+
+function New-OracleManagedDataAccessParameter{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$ParameterName,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$Direction,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$OracleDbType,
+        [parameter(ValueFromPipelineByPropertyName)]$Size,
+        [parameter(ValueFromPipelineByPropertyName)]$Value
+    )
+    process{
+        New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+            ParameterName = $ParameterName;
+            OracleDbType = $OracleDbType
+            Direction = $Direction;
+            Size = $Size;
+            Value = $Value
+        }
+    }
+}
+
+
+function Invoke-HZCustAccountSiteV2PubCreateCustSiteUse{
+    param(
+        [parameter(ValueFromPipelineByPropertyName)]$bill_to_site_use_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_acct_site_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$site_use_code,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$primary_salesrep_id,
+        [parameter(ValueFromPipelineByPropertyName)]$order_type_id,
+        [parameter(ValueFromPipelineByPropertyName)]$price_list_id,
+        [parameter(ValueFromPipelineByPropertyName)]$fob_point,
+        [parameter(ValueFromPipelineByPropertyName)]$freight_term,
+        [parameter(ValueFromPipelineByPropertyName)]$ship_via,
+        [parameter(ValueFromPipelineByPropertyName)]$SHIP_SETS_INCLUDE_LINES_FLAG,
+        [parameter(ValueFromPipelineByPropertyName)]$attribute9,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_cust_site_use_rec HZ_CUST_ACCOUNT_SITE_V2PUB.CUST_SITE_USE_REC_TYPE;
+        p_customer_profile_rec HZ_CUSTOMER_PROFILE_V2PUB.CUSTOMER_PROFILE_REC_TYPE;
+        BEGIN
+        p_cust_site_use_rec.cust_acct_site_id := '$($cust_acct_site_id)'; 
+        p_cust_site_use_rec.site_use_code := '$($site_use_code)';
+        p_cust_site_use_rec.primary_salesrep_id := '$($primary_salesrep_id)';
+        p_cust_site_use_rec.order_type_id := '$($order_type_id)';
+        p_cust_site_use_rec.price_list_id := '$($price_list_id)';
+        p_cust_site_use_rec.fob_point           :=  '$($fob_point)';
+        p_cust_site_use_rec.freight_term        :=  '$($freight_term)';
+        p_cust_site_use_rec.ship_via            :=  '$($ship_via)';
+        p_cust_site_use_rec.SHIP_SETS_INCLUDE_LINES_FLAG := '$($SHIP_SETS_INCLUDE_LINES_FLAG)';
+        p_cust_site_use_rec.attribute9          :=  '$($attribute9)' ;
+        p_cust_site_use_rec.created_by_module := '$($created_by_module)';
+        hz_cust_account_site_v2pub.create_cust_site_use(
+            'T',
+            p_cust_site_use_rec,
+            p_customer_profile_rec,
+            '',
+            '',
+            :x_site_use_id,
+            :x_return_status,
+            :x_msg_count,
+            :x_msg_data);
+    END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_site_use_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZPartyV2PubCreatePerson{
+    param(
+        [parameter(ValueFromPipelineByPropertyName)]$person_pre_name_adjunct,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$person_first_name,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$person_last_name,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_person_rec HZ_PARTY_V2PUB.person_rec_type;
+        BEGIN
+        p_person_rec.person_pre_name_adjunct := '$($person_pre_name_adjunct)';
+        p_person_rec.person_first_name := '$($person_first_name)';
+        p_person_rec.person_last_name := '$($person_last_name)';
+        p_person_rec.created_by_module := '$($created_by_module)';
+       
+        HZ_PARTY_V2PUB.create_person(
+        'T',
+        p_person_rec,
+        :x_bparty_id,
+        :x_bparty_number,
+        :x_bprofile_id,
+        :x_return_status,
+        :x_msg_count,
+        :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_number"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_profile_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZPartyContactV2PubCreateOrgContact{
+    param(
+        [parameter(ValueFromPipelineByPropertyName)]$subject_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$object_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$subject_type,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$subject_table_name,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$object_type,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$object_table_name,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$relationship_code,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$relationship_type,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_org_contact_rec HZ_PARTY_CONTACT_V2PUB.ORG_CONTACT_REC_TYPE;
+        BEGIN
+        p_org_contact_rec.party_rel_rec.subject_id := '$($subject_id)';
+        p_org_contact_rec.party_rel_rec.subject_type := '$($subject_type)';
+        p_org_contact_rec.party_rel_rec.subject_table_name := '$($subject_table_name)';
+        p_org_contact_rec.party_rel_rec.object_id := '$($object_id)';
+        p_org_contact_rec.party_rel_rec.object_type := '$($object_type)';
+        p_org_contact_rec.party_rel_rec.object_table_name := '$($object_table_name)';
+        p_org_contact_rec.party_rel_rec.relationship_code := '$($relationship_code)';
+        p_org_contact_rec.party_rel_rec.relationship_type := '$($relationship_type)';
+        p_org_contact_rec.party_rel_rec.start_date := SYSDATE;
+
+        hz_party_contact_v2pub.create_org_contact(
+        'T',
+        p_org_contact_rec,
+        :x_org_contact_id,
+        :x_party_rel_id,
+        :x_party_id,
+        :x_party_number,
+        :x_return_status,
+        :x_msg_count,
+        :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_org_contact_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_rel_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_party_number"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZCustAccountRoleV2PubCreateCustAccountRole{
+    param(
+        [parameter(ValueFromPipelineByPropertyName)]$party_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_account_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$cust_acct_site_id,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$primary_flag,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$role_type,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_cr_cust_acc_role_rec HZ_CUST_ACCOUNT_ROLE_V2PUB.cust_account_role_rec_type;
+        org_id    NUMBER := 82;
+        BEGIN
+        fnd_global.apps_initialize ( user_id      => 7614
+        ,resp_id      => 21623
+        ,resp_appl_id => 660);
+        mo_global.init ( 'AR' ) ;
+        mo_global.set_policy_context ('S', org_id ) ;
+
+        p_cust_acc_role_rec.party_id := '$($party_id)';--11339; 
+        p_cust_acc_role_rec.cust_account_id := '$($cust_account_id)';--10033; 
+        p_cust_acc_role_rec.cust_acct_site_id := '$($cust_acct_site_id)';
+        p_cust_acc_role_rec.primary_flag := '$($primary_flag)';
+        p_cust_acc_role_rec.role_type := '$($role_type)';
+        p_cust_acc_role_rec.created_by_module := '$($created_by_module)';
+        
+        HZ_CUST_ACCOUNT_ROLE_V2PUB.create_cust_account_role(
+        'T',
+        p_cust_acc_role_rec,
+        :x_cust_account_role_id,
+        :x_return_status,
+        :x_msg_count,
+        :x_msg_data);
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_cust_account_role_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZContactPointV2PubCreateContactPoint{
+    param(
+        [parameter(ValueFromPipelineByPropertyName)]$party_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$owner_table_name,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$owner_table_id,
+        [parameter(ValueFromPipelineByPropertyName)]$contact_point_type,
+        [parameter(ValueFromPipelineByPropertyName)]$phone_line_type,
+        [parameter(ValueFromPipelineByPropertyName)]$phone_area_code,
+        [parameter(ValueFromPipelineByPropertyName)]$Phone_number,
+        [parameter(ValueFromPipelineByPropertyName)]$email_format,
+        [parameter(ValueFromPipelineByPropertyName)]$email_address,
+        [parameter(ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_contact_point_rec HZ_CONTACT_POINT_V2PUB.CONTACT_POINT_REC_TYPE;
+        p_phone_rec HZ_CONTACT_POINT_V2PUB.phone_rec_type;
+        p_edi_rec HZ_CONTACT_POINT_V2PUB.edi_rec_type;
+        p_email_rec HZ_CONTACT_POINT_V2PUB.email_rec_type;
+        p_telex_rec HZ_CONTACT_POINT_V2PUB.telex_rec_type;
+        p_web_rec HZ_CONTACT_POINT_V2PUB.web_rec_type;
+        BEGIN
+        p_contact_point_rec.created_by_module :=  '$($created_by_module)';
+        p_contact_point_rec.owner_table_name := '$($owner_table_name)';
+        p_contact_point_rec.owner_table_id :=  '$($owner_table_id)';
+        p_contact_point_rec.contact_point_type := '$($contact_point_type)';
+        p_phone_rec.phone_line_type := '$($phone_line_type)';
+        p_phone_rec.phone_area_code := '$($phone_area_code)'; --substr(p_bphone_number,1,3);--p_phone_area_code;--'407';
+        p_phone_rec.Phone_number := '$($Phone_number)'; --substr(p_bphone_number,5);
+        p_email_rec_type.email_format := '$($email_format)';
+        p_email_rec_type.email_address := '$($email_address)';
+    HZ_CONTACT_POINT_V2PUB.create_contact_point (
+      'T',
+      p_contact_point_rec,
+      p_edi_rec_type,
+      p_email_rec,
+      p_phone_rec,
+      p_telex_rec,
+      p_web_rec_type,
+      :x_contact_point_id,
+      :x_return_status,
+      :x_msg_count,
+      :x_msg_data);
+      END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_contact_point_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-HZCustAccountRoleV2PubCreateRoleResponsibility{
+    param(
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_account_role_id,
+        [parameter(Mandatory,ValueFromPipelineByPropertyName)]$responsibility_type,
+        [parameter(ValueFromPipelineByPropertyName)]$created_by_module,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    Process{
+        $SQLCommand = @"
+        DECLARE
+        p_role_responsibility_rec HZ_CUST_ACCOUNT_ROLE_V2PUB.ROLE_RESPONSIBILITY_REC_TYPE;
+        BEGIN
+        p_role_responsibility_rec.cust_account_role_id := '$($cust_account_role_id)';
+        p_role_responsibility_rec.responsibility_type := '$($responsibility_type)';
+        p_role_responsibility_rec.created_by_module := '$($created_by_module)';
+        
+        HZ_CUST_ACCOUNT_ROLE_V2PUB.create_role_responsibility (
+        'T',
+        p_role_responsibility_rec,
+        :x_responsibility_id,
+        :x_return_status,
+        :x_msg_count,
+        :x_msg_data
+        );
+        END;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_responsibility_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
