@@ -1098,7 +1098,7 @@ function Invoke-HZCustAccountSiteV2PubCreateCustAcctSite{
         BEGIN
         p_cust_acct_site_rec.cust_account_id := '$($cust_acct_id)'; --lx_cust_acct_id;--12722; 
         p_cust_acct_site_rec.party_site_id := '$($PARTY_SITE_ID)'; --l_bparty_site_id;--12164;
-        fnd_global.apps_initialize ( user_id      => 7614
+        fnd_global.apps_initialize ( user_id      => 1231
                                    ,resp_id      => 21623
                                    ,resp_appl_id => 660);
         mo_global.init ( 'AR' ) ;
@@ -1170,7 +1170,6 @@ function New-OracleManagedDataAccessParameter{
 
 function Invoke-HZCustAccountSiteV2PubCreateCustSiteUse{
     param(
-        [parameter(ValueFromPipelineByPropertyName)]$bill_to_site_use_id,
         [parameter(Mandatory,ValueFromPipelineByPropertyName)]$cust_acct_site_id,
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$site_use_code,
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$primary_salesrep_id,
@@ -1331,6 +1330,7 @@ function Invoke-HZPartyContactV2PubCreateOrgContact{
         [parameter(Mandatory,ValueFromPipelineByPropertyName)]$object_table_name,
         [parameter(Mandatory,ValueFromPipelineByPropertyName)]$relationship_code,
         [parameter(Mandatory,ValueFromPipelineByPropertyName)]$relationship_type,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
 
     )
@@ -1339,6 +1339,7 @@ function Invoke-HZPartyContactV2PubCreateOrgContact{
         DECLARE
         p_org_contact_rec HZ_PARTY_CONTACT_V2PUB.ORG_CONTACT_REC_TYPE;
         BEGIN
+        p_org_contact_rec.created_by_module := '$($created_by_module)';
         p_org_contact_rec.party_rel_rec.subject_id := '$($subject_id)';
         p_org_contact_rec.party_rel_rec.subject_type := '$($subject_type)';
         p_org_contact_rec.party_rel_rec.subject_table_name := '$($subject_table_name)';
@@ -1424,25 +1425,25 @@ function Invoke-HZCustAccountRoleV2PubCreateCustAccountRole{
     Process{
         $SQLCommand = @"
         DECLARE
-        p_cr_cust_acc_role_rec HZ_CUST_ACCOUNT_ROLE_V2PUB.cust_account_role_rec_type;
+        p_cust_account_role_rec HZ_CUST_ACCOUNT_ROLE_V2PUB.cust_account_role_rec_type;
         org_id    NUMBER := 82;
         BEGIN
-        fnd_global.apps_initialize ( user_id      => 7614
+        fnd_global.apps_initialize ( user_id      => 1231
         ,resp_id      => 21623
         ,resp_appl_id => 660);
         mo_global.init ( 'AR' ) ;
         mo_global.set_policy_context ('S', org_id ) ;
 
-        p_cust_acc_role_rec.party_id := '$($party_id)';--11339; 
-        p_cust_acc_role_rec.cust_account_id := '$($cust_account_id)';--10033; 
-        p_cust_acc_role_rec.cust_acct_site_id := '$($cust_acct_site_id)';
-        p_cust_acc_role_rec.primary_flag := '$($primary_flag)';
-        p_cust_acc_role_rec.role_type := '$($role_type)';
-        p_cust_acc_role_rec.created_by_module := '$($created_by_module)';
+        p_cust_account_role_rec.party_id := '$($party_id)';--11339; 
+        p_cust_account_role_rec.cust_account_id := '$($cust_account_id)';--10033; 
+        p_cust_account_role_rec.cust_acct_site_id := '$($cust_acct_site_id)';
+        p_cust_account_role_rec.primary_flag := '$($primary_flag)';
+        p_cust_account_role_rec.role_type := '$($role_type)';
+        p_cust_account_role_rec.created_by_module := '$($created_by_module)';
         
         HZ_CUST_ACCOUNT_ROLE_V2PUB.create_cust_account_role(
         'T',
-        p_cust_acc_role_rec,
+        p_cust_account_role_rec,
         :x_cust_account_role_id,
         :x_return_status,
         :x_msg_count,
@@ -1502,9 +1503,9 @@ function Invoke-HZContactPointV2PubCreateContactPoint{
         p_contact_point_rec HZ_CONTACT_POINT_V2PUB.CONTACT_POINT_REC_TYPE;
         p_phone_rec HZ_CONTACT_POINT_V2PUB.phone_rec_type;
         p_edi_rec HZ_CONTACT_POINT_V2PUB.edi_rec_type;
-        p_email_rec HZ_CONTACT_POINT_V2PUB.email_rec_type;
         p_telex_rec HZ_CONTACT_POINT_V2PUB.telex_rec_type;
         p_web_rec HZ_CONTACT_POINT_V2PUB.web_rec_type;
+        p_email_rec HZ_CONTACT_POINT_V2PUB.email_rec_type;
         BEGIN
         p_contact_point_rec.created_by_module :=  '$($created_by_module)';
         p_contact_point_rec.owner_table_name := '$($owner_table_name)';
@@ -1513,16 +1514,16 @@ function Invoke-HZContactPointV2PubCreateContactPoint{
         p_phone_rec.phone_line_type := '$($phone_line_type)';
         p_phone_rec.phone_area_code := '$($phone_area_code)'; --substr(p_bphone_number,1,3);--p_phone_area_code;--'407';
         p_phone_rec.Phone_number := '$($Phone_number)'; --substr(p_bphone_number,5);
-        p_email_rec_type.email_format := '$($email_format)';
-        p_email_rec_type.email_address := '$($email_address)';
+        p_email_rec.email_format := '$($email_format)';
+        p_email_rec.email_address := '$($email_address)';
     HZ_CONTACT_POINT_V2PUB.create_contact_point (
       'T',
       p_contact_point_rec,
-      p_edi_rec_type,
+      p_edi_rec,
       p_email_rec,
       p_phone_rec,
       p_telex_rec,
-      p_web_rec_type,
+      p_web_rec,
       :x_contact_point_id,
       :x_return_status,
       :x_msg_count,
