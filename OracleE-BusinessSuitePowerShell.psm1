@@ -935,7 +935,7 @@ function Invoke-HZCustAccountV2PubCreateCustAccount{
             Direction = "Output"
         }))
 
-    Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+    Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
     $Output = [PSCustomObject]@{}
     ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1004,7 +1004,7 @@ function Invoke-HZLocationV2PubCreateLocation{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1071,7 +1071,7 @@ function Invoke-HZPartySiteV2PubCreatePartySite{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1087,6 +1087,7 @@ function Invoke-HZCustAccountSiteV2PubCreateCustAcctSite{
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$party_site_id,
         [parameter(ValueFromPipelineByPropertyName)]$Language = "US",
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$FNDUserID,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
 
     )
@@ -1098,7 +1099,7 @@ function Invoke-HZCustAccountSiteV2PubCreateCustAcctSite{
         BEGIN
         p_cust_acct_site_rec.cust_account_id := '$($cust_acct_id)'; --lx_cust_acct_id;--12722; 
         p_cust_acct_site_rec.party_site_id := '$($PARTY_SITE_ID)'; --l_bparty_site_id;--12164;
-        fnd_global.apps_initialize ( user_id      => 1231
+        fnd_global.apps_initialize ( user_id      => $($FNDUserID)
                                    ,resp_id      => 21623
                                    ,resp_appl_id => 660);
         mo_global.init ( 'AR' ) ;
@@ -1137,7 +1138,7 @@ function Invoke-HZCustAccountSiteV2PubCreateCustAcctSite{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1236,7 +1237,7 @@ function Invoke-HZCustAccountSiteV2PubCreateCustSiteUse{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1310,7 +1311,7 @@ function Invoke-HZPartyV2PubCreatePerson{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1401,7 +1402,7 @@ function Invoke-HZPartyContactV2PubCreateOrgContact{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1419,6 +1420,7 @@ function Invoke-HZCustAccountRoleV2PubCreateCustAccountRole{
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$primary_flag,
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$role_type,
         [parameter(mandatory,ValueFromPipelineByPropertyName)]$created_by_module,
+        [parameter(mandatory,ValueFromPipelineByPropertyName)]$FNDUserID,
         $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
 
     )
@@ -1428,7 +1430,7 @@ function Invoke-HZCustAccountRoleV2PubCreateCustAccountRole{
         p_cust_account_role_rec HZ_CUST_ACCOUNT_ROLE_V2PUB.cust_account_role_rec_type;
         org_id    NUMBER := 82;
         BEGIN
-        fnd_global.apps_initialize ( user_id      => 1231
+        fnd_global.apps_initialize ( user_id      => $($FNDUserID)
         ,resp_id      => 21623
         ,resp_appl_id => 660);
         mo_global.init ( 'AR' ) ;
@@ -1473,7 +1475,7 @@ function Invoke-HZCustAccountRoleV2PubCreateCustAccountRole{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1553,7 +1555,7 @@ function Invoke-HZContactPointV2PubCreateContactPoint{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1612,7 +1614,7 @@ function Invoke-HZCustAccountRoleV2PubCreateRoleResponsibility{
                     Size = 2000
                     Direction = "Output"
             }))
-        Invoke-OracleSQLWithParameters -ConnectionString $ConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
 
         $Output = [PSCustomObject]@{}
         ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
@@ -1622,3 +1624,11 @@ function Invoke-HZCustAccountRoleV2PubCreateRoleResponsibility{
     }
 }
 
+function Get-EBSFNDUser {
+    param (
+        [parameter(mandatory)]$user_name,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "fnd_user"
+    Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+}
