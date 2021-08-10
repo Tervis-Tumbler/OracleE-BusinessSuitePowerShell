@@ -103,10 +103,11 @@ FNDLOAD $FNDLoadCredentialParameter 0 Y UPLOAD `$FND_TOP/patch/115/import/afscur
 function Invoke-EBSSQL {
     param (
         [Parameter(Mandatory)][String]$SQLCommand,
-        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration),
+        $Parameters
     )
     if ($EBSEnvironmentConfiguration) {
-        Invoke-OracleSQL -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow |
+        Invoke-OracleSQL -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -ConvertFromDataRow -Parameters $Parameters |
         Remove-PSObjectEmptyOrNullProperty |
         Remove-EBSSQLPropertiesWeDontCareAbout
     } else {
