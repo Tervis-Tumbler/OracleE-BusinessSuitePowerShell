@@ -24,7 +24,7 @@ function New-EBSPowershellConfiguration {
 
     if (-not $DatabaseConnectionString) {
         $DatabaseConnectionString = $Parameters |
-        ConvertFrom-PSBoundParameters -Property Host,Port,Service_Name,UserName,Password,Protocol |
+        ConvertFrom-PSBoundParameters -Property Host,Port,Service_Nfame,UserName,Password,Protocol |
         ConvertTo-OracleConnectionString
     }
 
@@ -837,6 +837,19 @@ function Get-EBSTradingCommunityArchitectureFNDLookupValues {
     }
 }
 
+function Get-EBSTradingCommunityArchitectureHoldDefinition {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Name,
+        [parameter(ValueFromPipelineByPropertyName)]$Type_Code,
+        [parameter(ValueFromPipelineByPropertyName)]$Hold_ID,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "OE_HOLD_DEFINITIONS"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
 function Invoke-HZCustAccountV2PubCreateCustAccount{
     param(
         [parameter(Mandatory,ValueFromPipelineByPropertyName)]$organization_name,
@@ -1632,4 +1645,364 @@ function Get-EBSFNDUser {
     )
     $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "fnd_user"
     Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+}
+
+function Get-EBSTradingCommunityArchitectureCustomerAccount {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName,ParameterSetName="Party_ID")]$Cust_Account_ID,
+        [Parameter(ValueFromPipelineByPropertyName,ParameterSetName="PARTY_SITE_NUMBER")]$Party_ID,
+        [Parameter(ValueFromPipelineByPropertyName,ParameterSetName="PARTY_SITE_NUMBER")]$Account_Number,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "hz_cust_accounts"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+
+function Get-EBSTradingCommunityArchitectureLocation {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName)]$Location_ID,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "hz_locations"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSTradingCommunityArchitecturePartySite {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName)]$Party_Site_ID,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "hz_party_sites"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureItem {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$segment1,
+        [parameter(ValueFromPipelineByPropertyName)]$organization_id,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "mtl_system_items_b"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Invoke-EBSTradingCommunityArchitectureProcessOrder {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName)]$p_customer_name,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_address1,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_address2,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_address3,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_address4,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_state,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_city,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_zip,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_county,
+        [Parameter(ValueFromPipelineByPropertyName)]$invoice_to_country,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_address1,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_address2,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_address3,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_address4,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_state,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_city,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_zip,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_county,
+        [Parameter(ValueFromPipelineByPropertyName)]$ship_to_country,
+        [Parameter(ValueFromPipelineByPropertyName)]$pricing_date,
+        [Parameter(ValueFromPipelineByPropertyName)]$order_type,
+        [Parameter(ValueFromPipelineByPropertyName)]$salesrep,
+        [Parameter(ValueFromPipelineByPropertyName)]$shipping_method,
+        [Parameter(ValueFromPipelineByPropertyName)]$freight_carrier,
+        [Parameter(ValueFromPipelineByPropertyName)]$price_list,
+        [Parameter(ValueFromPipelineByPropertyName)]$payment_term,
+        [Parameter(ValueFromPipelineByPropertyName)]$order_source,
+        [Parameter(ValueFromPipelineByPropertyName)]$transactional_curr_code,
+        [Parameter(ValueFromPipelineByPropertyName)]$inventory_item_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$inventory_item,
+        [Parameter(ValueFromPipelineByPropertyName)]$ordered_quantity,
+        [Parameter(ValueFromPipelineByPropertyName)]$hold_entity_code,
+        [Parameter(ValueFromPipelineByPropertyName)]$header_id,
+
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process{
+        $SQLCommand = @"
+        DECLARE
+        /***INPUT VARIABLES FOR PROCESS_ORDER API*************************/
+        l_header_rec oe_order_pub.header_rec_type;
+        l_header_val_rec    oe_order_pub.Header_Val_Rec_Type;
+        l_line_tbl     oe_order_pub.line_tbl_type;
+        l_line_val_tbl oe_order_pub.Line_Val_Tbl_Type;
+        l_action_request_tbl oe_order_pub.Request_Tbl_Type;
+        /***OUT VARIABLES FOR PROCESS_ORDER API***************************/
+        l_header_rec_out oe_order_pub.header_rec_type;
+        l_header_val_rec_out oe_order_pub.header_val_rec_type;
+        l_header_adj_tbl_out oe_order_pub.header_adj_tbl_type;
+        l_header_adj_val_tbl_out oe_order_pub.header_adj_val_tbl_type;
+        l_header_price_att_tbl_out oe_order_pub.header_price_att_tbl_type;
+        l_header_adj_att_tbl_out oe_order_pub.header_adj_att_tbl_type;
+        l_header_adj_assoc_tbl_out oe_order_pub.header_adj_assoc_tbl_type;
+        l_header_scredit_tbl_out oe_order_pub.header_scredit_tbl_type;
+        l_header_scredit_val_tbl_out oe_order_pub.header_scredit_val_tbl_type;
+        l_line_tbl_out oe_order_pub.line_tbl_type;
+        l_line_val_tbl_out oe_order_pub.line_val_tbl_type;
+        
+        l_line_adj_tbl_out oe_order_pub.line_adj_tbl_type;
+        l_line_adj_val_tbl_out oe_order_pub.line_adj_val_tbl_type;
+        l_line_price_att_tbl_out oe_order_pub.line_price_att_tbl_type;
+        l_line_adj_att_tbl_out oe_order_pub.line_adj_att_tbl_type;
+        l_line_adj_assoc_tbl_out oe_order_pub.line_adj_assoc_tbl_type;
+        l_line_scredit_tbl_out oe_order_pub.line_scredit_tbl_type;
+        l_line_scredit_val_tbl_out oe_order_pub.line_scredit_val_tbl_type;
+        l_lot_serial_tbl_out oe_order_pub.lot_serial_tbl_type;
+        l_lot_serial_val_tbl_out oe_order_pub.lot_serial_val_tbl_type;
+        l_action_request_tbl_out oe_order_pub.request_tbl_type;
+        l_msg_index NUMBER;
+        l_data VARCHAR2(2000);
+        l_loop_count NUMBER;
+        l_debug_file VARCHAR2(200);
+        -- book API vars
+        l_hold_id   NUMBER;
+        l_hold_source_rec OE_HOLDS_PVT.HOLD_SOURCE_REC_TYPE; 
+        
+        BEGIN
+        fnd_global.apps_initialize("1231", "50650", "660"); 
+        mo_global.init('ONT'); 
+        MO_GLOBAL.SET_POLICY_CONTEXT('S',l_org);
+        oe_msg_pub.initialize; 
+
+        l_header_rec := oe_order_pub.G_MISS_HEADER_REC;
+        l_header_rec.operation := OE_GLOBALS.G_OPR_CREATE;
+        l_header_val_rec.sold_to_org := '$($p_customer_name)';
+
+        l_header_val_rec.invoice_to_address1:='$($invoice_to_address1)';
+        l_header_val_rec.invoice_to_address2:='$($invoice_to_address2)';
+        l_header_val_rec.invoice_to_address3:='$($invoice_to_address3)';
+        l_header_val_rec.invoice_to_address4:='$($invoice_to_address4)';
+        l_header_val_rec.invoice_to_state   :='$($invoice_to_state)';
+        l_header_val_rec.invoice_to_city    :='$($invoice_to_city)' ;
+        l_header_val_rec.invoice_to_zip     :='$($invoice_to_zip)';
+        l_header_val_rec.invoice_to_county  :='$($invoice_to_county)';
+        l_header_val_rec.invoice_to_country :='$($invoice_to_country)';
+
+        l_header_val_rec.ship_to_address1:=$($ship_to_address1)';
+        l_header_val_rec.ship_to_address2:=$($ship_to_address2)';
+        l_header_val_rec.ship_to_address3:=$($ship_to_address3)';
+        l_header_val_rec.ship_to_address4:=$($ship_to_address4)';
+        l_header_val_rec.ship_to_state    :=$($ship_to_state)';
+        l_header_val_rec.ship_to_city     :=$($ship_to_city)' ;
+        l_header_val_rec.ship_to_zip      :=$($ship_to_zip)';
+        l_header_val_rec.ship_to_county   :=$($ship_to_county)';
+        l_header_val_rec.ship_to_country  :=$($ship_to_country)';
+        --l_header_rec.ship_to_org_id :=46025;
+        --l_header_rec.price_list_id := 6009;
+        l_header_val_rec.price_list       := $($price_list)';
+        l_header_rec.pricing_date         := $($pricing_date)';
+        l_header_val_rec.order_type       := $($order_type)' ;
+        l_header_val_rec.salesrep         := $($salesrep)' ;
+        l_header_val_rec.shipping_method  := $($shipping_method)';
+        l_header_val_rec.freight_carrier  := $($freight_carrier)';
+        l_header_val_rec.price_list       := $($price_list)';
+        l_header_val_rec.payment_term     := $($payment_term)' ;
+        l_header_val_rec.order_source     := $($order_source)';
+        l_header_rec.request_date         :=SYSDATE;
+        l_header_rec.ordered_date         :=SYSDATE;
+        l_header_rec.transactional_curr_code := $($transactional_curr_code)';
+
+        l_action_request_tbl(1) := oe_order_pub.G_MISS_REQUEST_REC;
+        l_action_request_tbl(1).request_type := oe_globals.g_book_order;
+        l_action_request_tbl(1).entity_code := oe_globals.g_entity_header;
+
+        l_line_tbl(1) := oe_order_pub.G_MISS_LINE_REC;
+        l_line_val_tbl(1) := oe_order_pub.G_MISS_LINE_VAL_REC;
+        l_line_tbl(1).operation := OE_GLOBALS.G_OPR_CREATE;
+        l_line_tbl(1).inventory_item_id := '$($inventory_item_id)';--5012 ;
+        l_line_val_tbl(1).inventory_item := '$($inventory_item)';--1000028 ;
+        l_line_tbl(1).ordered_quantity := '$($ordered_quantity)';
+
+        oe_order_pub.Process_Order( p_api_version_number => l_api_version_number,
+        p_header_rec => l_header_rec,
+        p_header_val_rec => l_header_val_rec,
+        p_line_tbl => l_line_tbl,
+        p_line_val_tbl => l_line_val_tbl,
+        p_action_request_tbl => l_action_request_tbl, 
+        --OUT variables
+        x_header_rec => l_header_rec_out,
+        x_header_val_rec => l_header_val_rec_out,
+        x_header_adj_tbl => l_header_adj_tbl_out,
+        x_header_adj_val_tbl => l_header_adj_val_tbl_out,
+        x_header_price_att_tbl => l_header_price_att_tbl_out,
+        x_header_adj_att_tbl => l_header_adj_att_tbl_out,
+        x_header_adj_assoc_tbl => l_header_adj_assoc_tbl_out,
+        x_header_scredit_tbl => l_header_scredit_tbl_out,
+        x_header_scredit_val_tbl => l_header_scredit_val_tbl_out,
+        x_line_tbl => l_line_tbl_out,
+        x_line_val_tbl => l_line_val_tbl_out,
+        x_line_adj_tbl => l_line_adj_tbl_out,
+        x_line_adj_val_tbl => l_line_adj_val_tbl_out,
+        x_line_price_att_tbl => l_line_price_att_tbl_out,
+        x_line_adj_att_tbl => l_line_adj_att_tbl_out,
+        x_line_adj_assoc_tbl => l_line_adj_assoc_tbl_out,
+        x_line_scredit_tbl => l_line_scredit_tbl_out,
+        x_line_scredit_val_tbl => l_line_scredit_val_tbl_out,
+        x_lot_serial_tbl => l_lot_serial_tbl_out,
+        x_lot_serial_val_tbl => l_lot_serial_val_tbl_out,
+        x_action_request_tbl => l_action_request_tbl_out,
+        x_return_status => l_return_status,
+        x_msg_count => l_msg_count,
+        x_msg_data => l_msg_data);
+
+        x_header_rec_order_number := x_header_rec.order_number;
+        x_header_rec_return_status := x_header_rec.return_status;
+        x_header_rec_booked_flag := x_header_rec.booked_flag;
+        x_header_rec_header_id := x_header_rec.header_id;
+        x_header_rec_order_source_id := x_header_rec.order_source_id;
+        x_header_rec_flow_status_code := x_header_rec.flow_status_code;
+"@
+        $OracleParameters = $(
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_order_number"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = "2000"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_booked_flag"
+                    OracleDBType = "VARCHAR2"
+                    Size = 1
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_header_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_order_source_id"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_header_rec_flow_status_code"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_return_status"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_count"
+                    OracleDBType = "INT32"
+                    Direction = "Output"
+            }),
+            $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                    ParameterName = "x_msg_data"
+                    OracleDBType = "VARCHAR2"
+                    Size = 2000
+                    Direction = "Output"
+            }))
+        Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+        $Output = [PSCustomObject]@{}
+        ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+                $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+        }
+        $Output
+    }
+}
+
+function Invoke-EBSTradingCommunityArchitectureApplyOrderHold {
+    param (
+        [Parameter(ValueFromPipelineByPropertyName)]$hold_id,
+        [Parameter(ValueFromPipelineByPropertyName)]$hold_entity_code,
+        [Parameter(ValueFromPipelineByPropertyName)]$header_id,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process{
+        $SQLCommand = @"
+        DECLARE
+        l_hold_source_rec OE_HOLDS_PVT.HOLD_SOURCE_REC_TYPE; 
+        BEGIN
+        l_hold_source_rec := OE_HOLDS_PVT.G_MISS_HOLD_SOURCE_REC; 
+        l_hold_source_rec.hold_id := '$($hold_id)' ;
+        l_hold_source_rec.hold_entity_code := '$($hold_entity_code)';
+        l_hold_source_rec.hold_entity_id := 'p_header_rec_out.$($header_id)'; -- header_id of the order 
+        l_hold_source_rec.header_id := 'p_header_rec_out.$($header_id)'; -- header_id of the order 
+
+        OE_Holds_PUB.Apply_Holds ( 
+              p_api_version => 1.0, 
+              p_init_msg_list => FND_API.G_TRUE, 
+              p_commit => FND_API.G_TRUE, 
+              p_hold_source_rec => l_hold_source_rec, 
+              x_return_status => l_return_status, 
+              x_msg_count => l_msg_count, 
+              x_msg_data => l_msg_data 
+        END;
+"@
+    $OracleParameters = $(
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                ParameterName = "x_return_status"
+                OracleDBType = "VARCHAR2"
+                Size = 2000
+                Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                ParameterName = "x_msg_count"
+                OracleDBType = "INT32"
+                Direction = "Output"
+        }),
+        $(New-Object -TypeName Oracle.ManagedDataAccess.Client.OracleParameter -Property @{
+                ParameterName = "x_msg_data"
+                OracleDBType = "VARCHAR2"
+                Size = 2000
+                Direction = "Output"
+        }))
+    Invoke-OracleSQLWithParameters -ConnectionString $EBSEnvironmentConfiguration.DatabaseConnectionString -SQLCommand $SQLCommand -OracleParameters $OracleParameters | Out-Null
+
+    $Output = [PSCustomObject]@{}
+    ForEach($OutputParameter in ($OracleParameters | where {$_.Direction -eq "output"})){
+            $Output | Add-Member -MemberType NoteProperty -Name $OutputParameter.Parametername -Value $OutputParameter.value.value
+    }
+    $Output
+   }
+}
+
+function Get-EBSTradingCommunityArchitectureShipMethods {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Code,
+        [parameter(ValueFromPipelineByPropertyName)]$Description,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "oe_ship_methods_v"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
+}
+
+function Get-EBSTradingCommunityArchitectureSOLookups {
+    param (
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Code,
+        [parameter(ValueFromPipelineByPropertyName)]$Lookup_Type,
+        $EBSEnvironmentConfiguration = (Get-EBSPowershellConfiguration)
+    )
+    process {
+        $SQLCommand = New-EBSSQLSelect -Parameters $PSBoundParameters -TableName "OE_LOOKUPS_115"
+        Invoke-EBSSQL -EBSEnvironmentConfiguration $EBSEnvironmentConfiguration -SQLCommand $SQLCommand
+    }
 }
